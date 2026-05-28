@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.vscode/
+.idea/
+chroma_db/
+_temp_*
+_tmp_*
+*.pth
+*.h5
+*.pkl
+*.avi
+*.mkv
+*.gif
+*.webm
