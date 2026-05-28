@@ -23,7 +23,7 @@ pip install --upgrade pip wheel setuptools
 echo "==> [3/7] Python packages (main + Wav2Lip)"
 pip install -r requirements.txt
 
-echo "==> [4/7] XTTS v2 (Coqui TTS) — descarga ~1.8 GB en primer uso"
+echo "==> [4/7] XTTS v2 (Coqui TTS) — downloads ~1.8 GB on first use"
 pip install TTS
 
 echo "==> [5/7] Wav2Lip weights (wav2lip.pth, ~416 MB)"
@@ -33,32 +33,32 @@ if [ ! -f "Wav2Lip/checkpoints/wav2lip.pth" ]; then
         "https://github.com/justinjohn0306/Wav2Lip/releases/download/models/wav2lip.pth" \
         -O "Wav2Lip/checkpoints/wav2lip.pth"
 else
-    echo "    Ya existe, se omite."
+    echo "    Already exists, skipping."
 fi
 
 echo "==> [6/7] Ollama + LLM"
 if command -v ollama &>/dev/null; then
     ollama pull qwen2.5:3b
 else
-    echo "    ollama no encontrado. Instálalo desde https://ollama.com y luego: ollama pull qwen2.5:3b"
+    echo "    ollama not found. Install from https://ollama.com and run: ollama pull qwen2.5:3b"
 fi
 
-echo "==> [7/7] Directorios de usuario"
+echo "==> [7/7] User directories"
 mkdir -p voices diario
 
 echo ""
 echo "======================================================"
-echo "  ✅  Setup completado"
+echo "  ✅  Setup complete"
 echo "======================================================"
 echo ""
-echo "Antes de ejecutar:"
-echo "  1. Copia tu foto frontal a:  face.jpeg"
-echo "  2. Copia voces de referencia:"
-echo "       voices/es.wav   (español, 6-15s)"
-echo "       voices/en.wav   (inglés, 6-15s)"
-echo "  3. Agrega entradas de diario:  diario/*.md"
+echo "Before running:"
+echo "  1. Copy your front-facing photo to:  face.jpeg"
+echo "  2. Copy reference voice files:"
+echo "       voices/es.wav   (Spanish, 6-15s)"
+echo "       voices/en.wav   (English, 6-15s)"
+echo "  3. Add diary entries:  diario/*.md"
 echo ""
-echo "Para ejecutar:"
+echo "To run:"
 echo "    source venv/bin/activate"
 echo "    python3 app.py"
 echo "======================================================"

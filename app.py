@@ -125,7 +125,7 @@ class CopycatApp(ctk.CTk):
 
         # status
         self.lbl_status = ctk.CTkLabel(
-            self, text="Cargando IA...",
+            self, text="Loading AI...",
             font=("Courier New", 12, "bold"), text_color=C_WARN
         )
         self.lbl_status.pack(pady=4)
@@ -172,23 +172,23 @@ class CopycatApp(ctk.CTk):
         """Load all AI models in background. Embeddings load parallel to Whisper."""
         try:
             # Kick off embedding model load in a parallel thread
-            self._status("Cargando modelos…", C_WARN)
+            self._status("Loading models…", C_WARN)
             embed_ready = threading.Event()
             t = threading.Thread(target=self._load_embeddings,
                                  args=(embed_ready,), daemon=True)
             t.start()
 
             # Load Whisper while embeddings load in background
-            self._status("Cargando Whisper tiny…", C_WARN)
+            self._status("Loading Whisper tiny…", C_WARN)
             self.whisper_m = whisper.load_model("tiny", device="cpu")
 
             # By now embeddings should be ready; init ChromaDB instantly
             embed_ready.wait()
-            self._status("Indexando diario/ (RAG)…", C_WARN)
+            self._status("Indexing diario/ (RAG)…", C_WARN)
             self._init_rag()
 
             # XTTS is the heaviest model (~6 GB) — loads last
-            self._status("Cargando XTTS v2 (clonador)…  puede tardar.", C_WARN)
+            self._status("Loading XTTS v2 (voice cloner)… may take a while.", C_WARN)
             from tts_manager import TTSManager
             self.tts_manager = TTSManager(
                 voice_es_path=VOICE_ES,
@@ -198,10 +198,10 @@ class CopycatApp(ctk.CTk):
             )
 
             self.after(0, self._enable_btns)
-            self._status("Listo.  Pulsa Escucha o Listen.", C_OK)
-            self._log("[SYSTEM] Modelos cargados. XTTS v2 activo con latentes precalculados.")
+            self._status("Ready. Press Escucha or Listen.", C_OK)
+            self._log("[SYSTEM] Models loaded. XTTS v2 active with precomputed latents.")
         except Exception as exc:
-            self._status(f"Error carga: {exc}", C_ERR)
+            self._status(f"Load error: {exc}", C_ERR)
             self._log(f"[ERROR] {exc}")
 
     def _load_embeddings(self, ready: threading.Event):
@@ -297,7 +297,7 @@ class CopycatApp(ctk.CTk):
         lang = self.active_lang
         self.btn_es.configure(text="Escucha", fg_color=C_IDLE, state="disabled")
         self.btn_en.configure(text="Listen",  fg_color=C_IDLE, state="disabled")
-        self._status("Procesando…", C_WARN)
+        self._status("Processing…", C_WARN)
 
         audio = np.concatenate(self.audio_chunks, axis=0)
         sf.write(TMP_USER, audio, SAMPLE_RATE)
@@ -308,22 +308,22 @@ class CopycatApp(ctk.CTk):
     def _pipeline(self, lang: str):
         try:
             # 1. STT
-            self._status("Transcribiendo…", C_WARN)
+            self._status("Transcribing…", C_WARN)
             result    = self.whisper_m.transcribe(TMP_USER, fp16=False, language=lang)
             user_text = result["text"].strip()
             if not user_text:
-                self._status("Sin voz detectada.", C_WARN)
+                self._status("No speech detected.", C_WARN)
                 self.after(0, self._enable_btns)
                 return
-            self._log(f"[{lang.upper()}] Tú: {user_text}")
+            self._log(f"[{lang.upper()}] You: {user_text}")
 
             # 2. RAG
-            self._status("Consultando diario…", C_WARN)
+            self._status("Querying diary…", C_WARN)
             hits    = self.vector_store.similarity_search(user_text, k=2)
             context = "\n---\n".join(h.page_content for h in hits)
 
             # 3. LLM
-            self._status("Generando respuesta…", C_WARN)
+            self._status("Generating response…", C_WARN)
             lang_instr = (
                 "Responde siempre en español. Máximo 20 palabras."
                 if lang == "es"
@@ -340,7 +340,7 @@ class CopycatApp(ctk.CTk):
             self._log(f"Bot: {bot_text}")
 
             # 4. TTS – XTTS v2 voice cloning using precomputed latents
-            self._status("Generando voz (XTTS v2)…", C_WARN)
+            self._status("Generating voice (XTTS v2)…", C_WARN)
             self.tts_manager.generate_tts(
                 text=bot_text,
                 language=lang,
@@ -348,7 +348,7 @@ class CopycatApp(ctk.CTk):
             )
 
             # 5. Wav2Lip – lip sync (runs as subprocess to free main memory)
-            self._status("Sincronizando labios…", C_WARN)
+            self._status("Syncing lips…", C_WARN)
             cmd = (
                 f"{sys.executable} {WAV2LIP}/inference.py"
                 f" --checkpoint_path {WAV2LIP_PTH}"
@@ -361,7 +361,7 @@ class CopycatApp(ctk.CTk):
                            env={**os.environ, "OMP_NUM_THREADS": "6"})
 
             # 6. Play audio + video
-            self._status("Respondiendo…", C_OK)
+            self._status("Responding…", C_OK)
             threading.Thread(target=self._play_audio, daemon=True).start()
             self.after(0, self._play_video)
 
@@ -397,7 +397,7 @@ class CopycatApp(ctk.CTk):
             else:
                 cap.release()
                 self._show_static()
-                self._status("Listo.  Pulsa Escucha o Listen.", C_OK)
+                self._status("Ready. Press Escucha or Listen.", C_OK)
                 self.after(0, self._enable_btns)
 
         _next()

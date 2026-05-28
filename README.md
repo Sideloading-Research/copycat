@@ -1,112 +1,112 @@
 # Copycat — Local AI Avatar Chatbot with Lip-Sync
 
-Un asistente personal AI **offline, solo CPU** que te responde con **tu propia cara y voz**.
+An **offline, CPU-only** personal AI assistant that talks back with **your own face and voice**.
 
-**Pipeline:** Voz → Whisper (STT) → RAG (tu diario) → LLM (Qwen2.5) → XTTS v2 (clonar voz) → Wav2Lip (sincronizar labios) → Video
+**Pipeline:** Speech → Whisper (STT) → RAG (your diary) → LLM (Qwen2.5) → XTTS v2 (voice clone) → Wav2Lip (lip-sync) → Video
 
 ---
 
-## Requisitos mínimos
+## Minimum Requirements
 
-| Hardware | Mínimo |
-|----------|--------|
-| CPU | 4 núcleos |
+| Hardware | Minimum |
+|----------|---------|
+| CPU | 4 cores |
 | RAM | 10 GB |
-| Disco | 10 GB libres |
-| GPU | No necesaria |
+| Storage | 10 GB free |
+| GPU | Not required |
 
-**Linux** (Debian 12 testeado), Windows, macOS.
+**Linux** (Debian 12 tested), Windows, macOS.
 
 ---
 
-## Setup en 1 comando
+## One-command Setup
 
 ```bash
-git clone <este-repo> copycat
+git clone <this-repo> copycat
 cd copycat
 bash setup.sh
 ```
 
-El script lo hace **todo**:
-- Instala paquetes del sistema (`ffmpeg`, `python3-venv`, etc.)
-- Crea un `venv` e instala todas las dependencias Python
-- Descarga automáticamente `wav2lip.pth` (~416 MB)
-- Descarga el modelo `qwen2.5:3b` con Ollama
-- Prepara las carpetas `voices/` y `diario/`
+The script does **everything**:
+- Installs system packages (`ffmpeg`, `python3-venv`, etc.)
+- Creates a `venv` and installs all Python dependencies
+- Automatically downloads `wav2lip.pth` (~416 MB)
+- Pulls the `qwen2.5:3b` model with Ollama
+- Creates `voices/` and `diario/` folders
 
-> **Nota:** El primer uso descarga ~2 GB adicionales (XTTS v2, Whisper, sentence-transformer) automáticamente.
+> **Note:** First run downloads ~2 GB of additional models (XTTS v2, Whisper, sentence-transformer) automatically.
 
 ---
 
-## Preparar assets
+## Asset Preparation
 
-Antes de ejecutar, coloca estos archivos en la raíz del proyecto:
+Before running, place these files in the project root:
 
 ```
 copycat/
-├── face.jpeg          ← Tu foto frontal (cara completa, bien iluminada)
+├── face.jpeg          ← Your front-facing portrait (full face, well-lit)
 ├── voices/
-│   ├── es.wav         ← Voz referencia español (6-15s, audio limpio)
-│   └── en.wav         ← Voz referencia inglés (6-15s, audio limpio)
+│   ├── es.wav         ← Spanish voice reference (6-15s, clean audio)
+│   └── en.wav         ← English voice reference (6-15s, clean audio)
 └── diario/
-    ├── 2024-07-15.md  ← Tus entradas de diario en .md
+    ├── 2024-07-15.md  ← Your diary entries as .md files
     └── ...
 ```
 
 **Tips:**
-- **Foto:** Frontal, sin obstrucciones, mínimo 256×256
-- **Voz:** Graba 6–15s con el mismo micrófono que usarás para hablar
-- **Diario:** Cuantas más entradas, mejor responde el RAG
+- **Photo:** Front-facing, unobstructed, minimum 256×256
+- **Voice:** Record 6–15s with the same microphone you'll use for chatting
+- **Diary:** More entries = better RAG responses
 
-**Textos de ejemplo para grabar tu voz de referencia:**
+**Sample texts for recording your voice reference:**
 
 > **es.wav (español):**
 > _"Hoy fue un día bastante productivo, aunque empecé un poco tarde. Por la mañana terminé el informe que tenía pendiente y después aproveché para ordenar las ideas del proyecto nuevo. Me gusta trabajar con calma, escuchando música de fondo, y siento que así rindo mucho mejor. La semana que viene tengo que preparar la presentación, así que voy a dedicarle tiempo el fin de semana para llegar tranquilo."_
 
-> **en.wav (inglés):**
+> **en.wav (English):**
 > _"I've been thinking a lot about how quickly things change around us. One day you're comfortable with your routine, and the next you're learning something completely new. I find that the best way to handle uncertainty is to stay curious and keep asking questions. Every challenge is really just an opportunity to grow, even when it doesn't feel that way at first."_
 
-Lee el texto correspondiente en voz alta con tu tono natural, graba con el mismo micrófono que usarás para chatear, y guarda el archivo como `voices/es.wav` o `voices/en.wav`. El clonador capturará tu cadencia, entonación y timbre característicos.
+Read the corresponding text aloud in your natural tone, record with the same microphone you'll use for chatting, and save the file as `voices/es.wav` or `voices/en.wav`. The cloner will capture your characteristic cadence, intonation, and timbre.
 
 ---
 
-## Ejecutar
+## Run
 
 ```bash
 source venv/bin/activate
 python3 app.py
 ```
 
-Espera a que aparezca _"Listo. Pulsa Escucha o Listen."_ y presiona el botón.
+Wait for _"Listo. Pulsa Escucha o Listen."_ and press the button.
 
 ---
 
-## Personalizar
+## Customization
 
-| Cambio | Dónde |
+| Change | Where |
 |--------|-------|
-| Modelo LLM | `app.py:79` — cambiar `OLLAMA_MODEL` |
-| Voz de referencia | Reemplazar `voices/es.wav` o `voices/en.wav` |
-| Foto | Reemplazar `face.jpeg` |
-| Conocimiento | Agregar `.md` a `diario/` (se reindexa automáticamente) |
+| LLM model | `app.py:79` — change `OLLAMA_MODEL` |
+| Voice reference | Replace `voices/es.wav` or `voices/en.wav` |
+| Photo | Replace `face.jpeg` |
+| Knowledge | Add `.md` files to `diario/` (auto-reindexed) |
 
 ---
 
 ## Troubleshooting
 
-| Síntoma | Solución |
-|---------|----------|
-| _"Face not detected!"_ | Usa foto frontal bien iluminada |
-| Wav2Lip crashea | Reduce `--wav2lip_batch_size` en `app.py` |
-| Sin micrófono | `python -c "import sounddevice; print(sounddevice.query_devices())"` |
-| Error en ChromaDB | Borra `chroma_db/` y reinicia |
+| Symptom | Fix |
+|---------|-----|
+| _"Face not detected!"_ | Use a well-lit front-facing photo |
+| Wav2Lip crashes | Reduce `--wav2lip_batch_size` in `app.py` |
+| No microphone | `python -c "import sounddevice; print(sounddevice.query_devices())"` |
+| ChromaDB error | Delete `chroma_db/` and restart |
 
 ---
 
 ## Tech Stack
 
-| Componente | Modelo |
-|---|---|
+| Component | Model |
+|-----------|-------|
 | STT | [Whisper tiny](https://github.com/openai/whisper) |
 | RAG | [all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) + [ChromaDB](https://www.trychroma.com/) |
 | LLM | [Qwen2.5-3B](https://ollama.ai/library/qwen2.5:3b) via [Ollama](https://ollama.ai/) |
