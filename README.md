@@ -58,6 +58,16 @@ copycat/
 - **Voz:** Graba 6–15s con el mismo micrófono que usarás para hablar
 - **Diario:** Cuantas más entradas, mejor responde el RAG
 
+**Textos de ejemplo para grabar tu voz de referencia:**
+
+> **es.wav (español):**
+> _"Hoy fue un día bastante productivo, aunque empecé un poco tarde. Por la mañana terminé el informe que tenía pendiente y después aproveché para ordenar las ideas del proyecto nuevo. Me gusta trabajar con calma, escuchando música de fondo, y siento que así rindo mucho mejor. La semana que viene tengo que preparar la presentación, así que voy a dedicarle tiempo el fin de semana para llegar tranquilo."_
+
+> **en.wav (inglés):**
+> _"I've been thinking a lot about how quickly things change around us. One day you're comfortable with your routine, and the next you're learning something completely new. I find that the best way to handle uncertainty is to stay curious and keep asking questions. Every challenge is really just an opportunity to grow, even when it doesn't feel that way at first."_
+
+Lee el texto correspondiente en voz alta con tu tono natural, graba con el mismo micrófono que usarás para chatear, y guarda el archivo como `voices/es.wav` o `voices/en.wav`. El clonador capturará tu cadencia, entonación y timbre característicos.
+
 ---
 
 ## Ejecutar
