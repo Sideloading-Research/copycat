@@ -22,3 +22,8 @@ chromadb>=0.5.0
 
 # TTS voice cloning
 TTS>=0.22.0
+
+# Wav2Lip dependencies
+librosa>=0.10.0
+scipy>=1.11.0
+tqdm>=4.60.0
