@@ -18,13 +18,13 @@ sudo apt-get install -y \
 echo "==> [2/7] Python virtualenv"
 python3 -m venv venv
 source venv/bin/activate
-pip install --upgrade pip wheel setuptools
+pip install --upgrade pip wheel setuptools uv
+
+echo "==> [2.5/7] Installing CPU-only PyTorch (saves ~3GB of CUDA libraries)"
+uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 
 echo "==> [3/7] Python packages (main + Wav2Lip)"
-pip install -r requirements.txt
-
-echo "==> [4/7] XTTS v2 (Coqui TTS) — downloads ~1.8 GB on first use"
-pip install TTS
+uv pip install -r requirements.txt
 
 echo "==> [5/7] Wav2Lip weights (wav2lip.pth, ~416 MB)"
 mkdir -p Wav2Lip/checkpoints

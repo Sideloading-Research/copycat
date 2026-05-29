@@ -6,7 +6,7 @@ customtkinter>=5.2.0
 pillow>=10.0.0
 sounddevice>=0.4.6
 soundfile>=0.12.1
-numpy>=1.24.0
+numpy>=1.24.0,<2.0.0
 opencv-python-headless>=4.8.0
 openai-whisper>=20231117
 ollama>=0.2.0
@@ -22,6 +22,7 @@ chromadb>=0.5.0
 
 # TTS voice cloning
 TTS>=0.22.0
+transformers<4.40.0
 
 # Wav2Lip dependencies
 librosa>=0.10.0

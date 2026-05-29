@@ -29,7 +29,9 @@ bash setup.sh
 
 The script does **everything**:
 - Installs system packages (`ffmpeg`, `python3-venv`, etc.)
-- Creates a `venv` and installs all Python dependencies
+- Creates a `venv` and installs the ultra-fast `uv` package manager
+- Downloads the CPU-only version of PyTorch to save space (~3GB)
+- Installs all Python dependencies instantly with `uv`
 - Automatically downloads `wav2lip.pth` (~416 MB)
 - Pulls the `qwen2.5:3b` model with Ollama
 - Creates `voices/` and `diario/` folders
@@ -113,3 +115,14 @@ Wait for _"Listo. Pulsa Escucha o Listen."_ and press the button.
 | TTS | [XTTS v2](https://github.com/coqui-ai/TTS) |
 | Lip-sync | [Wav2Lip](https://github.com/Rudrabha/Wav2Lip) |
 | GUI | [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) |
+
+---
+
+## Changelog
+
+### [Unreleased]
+- **Dependency Installation Optimized:** Switched from `pip` to `uv` in `setup.sh` for blazing-fast dependency resolution, completely avoiding `pip`'s backtracking issues with heavy ML libraries.
+- **CPU-Only Optimization:** PyTorch is now explicitly installed from the CPU-only index prior to requirements, saving ~3GB of disk space and bandwidth by avoiding unnecessary CUDA toolkits.
+- **Numpy Compatibility:** Restricted `numpy<2.0.0` in `requirements.txt` to prevent breaking changes with older versions of `scipy`, `librosa`, and `TTS`.
+- **Transformers Compatibility:** Pinned `transformers<4.40.0` to fix a crash (`cannot import name 'BeamSearchScorer'`) caused by `TTS` incompatibility with newer `transformers` versions.
+- **Redundancy Fix:** Removed redundant `TTS` installation from `setup.sh` since it's already managed in `requirements.txt`.
