@@ -52,12 +52,12 @@ from faster_whisper import WhisperModel
 import ollama
 from PIL import Image, ImageTk
 
-# langchain-community sunset 2026-05 — using standalone replacement
+# langchain-community sunset 2026-05 — using standalone replacements
 from doc_loader import DirectoryLoader, TextLoader
 from langchain_core.documents import Document
 from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from sentence_transformers import SentenceTransformer
 
 # ── PATHS ──────────────────────────────────────────────────────────────────────
 BASE      = Path(__file__).parent
@@ -89,6 +89,18 @@ C_OK     = "#2e7d32"
 C_WARN   = "#e65100"
 C_ERR    = "#c62828"
 C_INFO   = "#0277bd"
+
+
+class LocalEmbeddings:
+    def __init__(self, model_name: str, model_kwargs: dict | None = None):
+        kwargs = model_kwargs or {}
+        self.model = SentenceTransformer(model_name, **kwargs)
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return self.model.encode(texts, show_progress_bar=False).tolist()
+
+    def embed_query(self, text: str) -> list[float]:
+        return self.model.encode(text).tolist()
 
 
 class CopycatApp(ctk.CTk):
@@ -203,7 +215,7 @@ class CopycatApp(ctk.CTk):
 
     def _load_embeddings(self, ready: threading.Event):
         """Load the sentence-transformer model (runs in parallel thread)."""
-        self.embed_model = HuggingFaceEmbeddings(
+        self.embed_model = LocalEmbeddings(
             model_name=EMBEDDING_MODEL,
             model_kwargs={"device": "cpu"}
         )
