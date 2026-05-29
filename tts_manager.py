@@ -57,7 +57,7 @@ class TTSManager:
         if os.path.exists(temp_path):
             return temp_path
         data, _ = librosa.load(wav_path, sr=24000, mono=True)
-        sf.write(temp_path, data, 24000)
+        sf.write(temp_path, data, 24000, subtype="PCM_16")
         return temp_path
 
     def _extract_state(self, lang: str, wav_path: str):
@@ -108,4 +108,4 @@ class TTSManager:
         if max_val > 0:
             audio = audio / max_val * 0.95
         import soundfile as sf
-        sf.write(output_path, audio, model.sample_rate)
+        sf.write(output_path, audio, model.sample_rate, subtype="PCM_16")
