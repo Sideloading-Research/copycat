@@ -10,7 +10,7 @@ echo "==> [1/7] System packages"
 sudo apt-get update -qq
 sudo apt-get install -y \
     python3-venv python3-pip python3-dev \
-    ffmpeg git wget curl \
+    ffmpeg git wget curl unzip \
     portaudio19-dev libasound2-dev libsndfile1-dev \
     build-essential libffi-dev libssl-dev \
     libgl1 libglib2.0-0
@@ -26,12 +26,23 @@ uv pip install torch torchvision torchaudio --index-url https://download.pytorch
 echo "==> [3/7] Python packages (main + Wav2Lip)"
 uv pip install -r requirements.txt
 
-echo "==> [5/7] Wav2Lip weights (wav2lip.pth, ~416 MB)"
+echo "==> [5/7] Wav2Lip weights (wav2lip_gan.pth, ~416 MB)"
 mkdir -p Wav2Lip/checkpoints
-if [ ! -f "Wav2Lip/checkpoints/wav2lip.pth" ]; then
+if [ ! -f "Wav2Lip/checkpoints/wav2lip_gan.pth" ]; then
     wget -q --show-progress \
-        "https://github.com/justinjohn0306/Wav2Lip/releases/download/models/wav2lip.pth" \
-        -O "Wav2Lip/checkpoints/wav2lip.pth"
+        "https://github.com/justinjohn0306/Wav2Lip/releases/download/models/wav2lip_gan.pth" \
+        -O "Wav2Lip/checkpoints/wav2lip_gan.pth"
+else
+    echo "    Already exists, skipping."
+fi
+
+echo "==> [5.5/7] OpenVoice v2 Checkpoints"
+if [ ! -d "checkpoints_v2" ]; then
+    wget -q --show-progress \
+        "https://myshell-public-repo-host.s3.amazonaws.com/openvoice/checkpoints_v2_0417.zip" \
+        -O "checkpoints_v2.zip"
+    unzip -q checkpoints_v2.zip -d .
+    rm checkpoints_v2.zip
 else
     echo "    Already exists, skipping."
 fi

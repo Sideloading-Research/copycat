@@ -1,90 +1,120 @@
 """
-XTTS v2 Voice-Cloning Manager.
+OpenVoice v2 Voice-Cloning Manager.
 
-Loads the Coqui XTTS v2 model once, computes speaker conditioning latents from
-reference audio on first run, then caches them to disk for near-instant reuse.
-
-Usage:
-    tts = TTSManager("voices/es.wav", "voices/en.wav",
-                     "voices/es_latents.pth", "voices/en_latents.pth")
-    tts.generate_tts("Hello world", "en", "output.wav")
+Loads the ToneColorConverter and MeloTTS base models once, computes speaker 
+conditioning latents from reference audio, then caches them in memory.
 """
 
 import os
 from pathlib import Path
 import torch
 import soundfile as sf
+import warnings
+
+# Suppress some common OpenVoice warnings
+warnings.filterwarnings("ignore")
+
+from openvoice import se_extractor
+from openvoice.api import ToneColorConverter
+from melo.api import TTS as MeloTTS
 
 class TTSManager:
-    """Manages XTTS v2 model lifecycle and cached speaker-latent inference."""
+    """Manages OpenVoice v2 model lifecycle and cached speaker-latent inference."""
 
     def __init__(self, voice_es_path: str, voice_en_path: str, latent_es_path: str, latent_en_path: str):
         self.voice_es_path = voice_es_path
         self.voice_en_path = voice_en_path
-        self.latent_es_path = latent_es_path
-        self.latent_en_path = latent_en_path
+        # We don't necessarily need the pth latent paths for OpenVoice as we extract them dynamically fast,
+        # but we keep the signature for compatibility with app.py
         
-        self.xtts_model = None
-        self.latents = {}
+        self.device = "cpu"
+        self.tone_color_converter = None
+        self.melo_models = {}
+        self.target_se = {}
+        self.source_se = {}
         
-        self._init_model()
+        self._init_models()
         self._load_or_compute_latents()
 
-    def _init_model(self):
-        """Initializes Coqui TTS wrapper and extracts the core XTTS model."""
-        os.environ["COQUI_TOS_AGREED"] = "1"
-        from TTS.api import TTS as CoquiTTS
+    def _init_models(self):
+        """Initializes ToneColorConverter and MeloTTS base models."""
+        ckpt_converter = 'checkpoints_v2/converter'
+        if not os.path.exists(ckpt_converter):
+            print(f"[ERROR] OpenVoice checkpoints not found in {ckpt_converter}. Please run setup.sh.")
+            return
+
+        self.tone_color_converter = ToneColorConverter(f'{ckpt_converter}/config.json', device=self.device)
+        self.tone_color_converter.load_ckpt(f'{ckpt_converter}/checkpoint.pth')
         
-        # Load the TTS model wrapper
-        tts_wrapper = CoquiTTS("tts_models/multilingual/multi-dataset/xtts_v2")
-        self.xtts_model = tts_wrapper.synthesizer.tts_model
+        # Load base MeloTTS models
+        # Note: OpenVoice v2 uses 'EN_V2' for English default, 'ES' for Spanish
+        self.melo_models['es'] = MeloTTS(language='ES', device=self.device)
+        self.melo_models['en'] = MeloTTS(language='EN_V2', device=self.device)
 
     def _load_or_compute_latents(self):
-        """Populate self.latents dict from disk cache (fast) or ad-hoc compute (slow, one-time)."""
+        """Extracts and caches the target voice embeddings (SE)."""
+        if not self.tone_color_converter:
+            return
+
         configs = [
-            ("es", self.voice_es_path, self.latent_es_path),
-            ("en", self.voice_en_path, self.latent_en_path)
+            ("es", self.voice_es_path),
+            ("en", self.voice_en_path)
         ]
-        for lang, voice_path, latent_path in configs:
-            self.latents[lang] = self._get_single_latent(voice_path, latent_path)
+        
+        for lang, voice_path in configs:
+            if os.path.exists(voice_path):
+                # Extract target speaker embedding
+                se, audio_name = se_extractor.get_se(voice_path, self.tone_color_converter, vad=True)
+                self.target_se[lang] = se
+                
+                # Get the default source speaker embedding from MeloTTS for that language
+                # OpenVoice v2 comes with base_speakers config, but extracting from a dummy generated audio is the standard way
+                dummy_text = "Prueba de audio" if lang == "es" else "Audio test"
+                src_path = f"tmp_dummy_{lang}.wav"
+                
+                # Default speaker ID
+                speaker_id = self.melo_models[lang].hps.data.spk2id.get('ES', 0) if lang == 'es' else self.melo_models[lang].hps.data.spk2id.get('EN-Default', 0)
+                if not isinstance(speaker_id, int):
+                    speaker_id = list(self.melo_models[lang].hps.data.spk2id.values())[0]
 
-    def _get_single_latent(self, voice_path: str, latent_path: str) -> dict:
-        """Retrieves single speaker latent dictionary (from disk or computed)."""
-        p = Path(latent_path)
-        if p.exists():
-            return torch.load(p)
-            
-        return self._compute_and_save_latent(voice_path, p)
-
-    def _compute_and_save_latent(self, voice_path: str, latent_path: Path) -> dict:
-        """Computes speaker conditioning latents and saves them to disk."""
-        gpt_cond_latent, speaker_embedding = self.xtts_model.get_conditioning_latents(
-            audio_path=[voice_path]
-        )
-        latent_dict = {
-            "gpt_cond_latent": gpt_cond_latent,
-            "speaker_embedding": speaker_embedding
-        }
-        torch.save(latent_dict, latent_path)
-        return latent_dict
+                self.melo_models[lang].tts_to_file(dummy_text, speaker_id, src_path, speed=1.0)
+                src_se, _ = se_extractor.get_se(src_path, self.tone_color_converter, vad=True)
+                self.source_se[lang] = src_se
+                
+                if os.path.exists(src_path):
+                    os.remove(src_path)
 
     def generate_tts(self, text: str, language: str, output_path: str):
-        """Synthesise speech from text using cached speaker latents.
+        """Synthesise speech from text using OpenVoice v2 tone color conversion.
 
         Args:
             text: Text string to vocalise.
             language: Language code ('es' or 'en').
-            output_path: Path for the resulting 24 kHz WAV file.
+            output_path: Path for the resulting WAV file.
         """
-        if language not in self.latents:
+        if language not in self.melo_models:
             raise ValueError(f"Language '{language}' not configured in TTSManager.")
             
-        lang_latents = self.latents[language]
+        if language not in self.target_se:
+            raise ValueError(f"Reference voice for '{language}' missing. Please provide {self.voice_es_path if language=='es' else self.voice_en_path}.")
+
+        # 1. Generate base audio with MeloTTS
+        src_path = f"tmp_base_{language}.wav"
+        model = self.melo_models[language]
+        
+        speaker_id = list(model.hps.data.spk2id.values())[0]
+        model.tts_to_file(text, speaker_id, src_path, speed=1.0)
+        
+        # 2. Convert tone to target voice
         with torch.inference_mode():
-            out = self.xtts_model.inference(
-                text=text,
-                language=language,
-                gpt_cond_latent=lang_latents["gpt_cond_latent"],
-                speaker_embedding=lang_latents["speaker_embedding"]
+            self.tone_color_converter.convert(
+                audio_src_path=src_path, 
+                src_se=self.source_se[language], 
+                tgt_se=self.target_se[language], 
+                output_path=output_path,
+                message="@MyShell"
             )
-        sf.write(output_path, out["wav"], 24000)
+            
+        # Clean up tmp file
+        if os.path.exists(src_path):
+            os.remove(src_path)

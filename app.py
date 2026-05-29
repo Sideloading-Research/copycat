@@ -3,7 +3,7 @@ Copycat — Local AI Avatar Chatbot with Lip-Sync
 
 Pipeline:
   Whisper tiny (STT) → ChromaDB + RAG → Ollama/Qwen2.5-3B (LLM)
-  → XTTS v2 (voice cloning TTS) → Wav2Lip (lip-sync) → Playback
+  → OpenVoice v2 (voice cloning TTS) → Wav2Lip-GAN (lip-sync) → Playback
 
 Runs fully offline on CPU (no GPU required).
 Customise your avatar by placing:
@@ -70,7 +70,7 @@ VOICE_EN     = str(VOICES / "en.wav")
 LATENT_ES    = str(VOICES / "es_latents.pth")
 LATENT_EN    = str(VOICES / "en_latents.pth")
 FACE_IMG     = str(BASE / "face.jpeg")
-WAV2LIP_PTH  = str(WAV2LIP / "checkpoints" / "wav2lip.pth")
+WAV2LIP_PTH  = str(WAV2LIP / "checkpoints" / "wav2lip_gan.pth")
 
 TMP_USER  = str(BASE / "_tmp_user.wav")
 TMP_BOT   = str(BASE / "_tmp_bot.wav")
@@ -187,8 +187,8 @@ class CopycatApp(ctk.CTk):
             self._status("Indexing diario/ (RAG)…", C_WARN)
             self._init_rag()
 
-            # XTTS is the heaviest model (~6 GB) — loads last
-            self._status("Loading XTTS v2 (voice cloner)… may take a while.", C_WARN)
+            # OpenVoice v2 is heavy (~1.5 GB) — loads last
+            self._status("Loading OpenVoice v2 (voice cloner)… may take a while.", C_WARN)
             from tts_manager import TTSManager
             self.tts_manager = TTSManager(
                 voice_es_path=VOICE_ES,
@@ -199,7 +199,7 @@ class CopycatApp(ctk.CTk):
 
             self.after(0, self._enable_btns)
             self._status("Ready. Press Escucha or Listen.", C_OK)
-            self._log("[SYSTEM] Models loaded. XTTS v2 active with precomputed latents.")
+            self._log("[SYSTEM] Models loaded. OpenVoice v2 active with precomputed latents.")
         except Exception as exc:
             self._status(f"Load error: {exc}", C_ERR)
             self._log(f"[ERROR] {exc}")
@@ -339,8 +339,8 @@ class CopycatApp(ctk.CTk):
             bot_text = resp["response"].strip()
             self._log(f"Bot: {bot_text}")
 
-            # 4. TTS – XTTS v2 voice cloning using precomputed latents
-            self._status("Generating voice (XTTS v2)…", C_WARN)
+            # 4. TTS – OpenVoice v2 voice cloning using precomputed latents
+            self._status("Generating voice (OpenVoice v2)…", C_WARN)
             self.tts_manager.generate_tts(
                 text=bot_text,
                 language=lang,
