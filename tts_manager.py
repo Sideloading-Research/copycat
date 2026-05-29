@@ -41,7 +41,13 @@ class TTSManager:
     def _get_model(self, language: str) -> TTSModel:
         if language not in self.models:
             cfg = LANG_CONFIG[language]
-            self.models[language] = TTSModel.load_model(language=cfg, quantize=True)
+            self.models[language] = TTSModel.load_model(
+                language=cfg,
+                quantize=False,
+                lsd_decode_steps=5,
+                temp=0.5,
+                noise_clamp=0.1,
+            )
         return self.models[language]
 
     def _prepare_wav(self, wav_path: str) -> str:
@@ -65,7 +71,7 @@ class TTSManager:
         clean_path = self._prepare_wav(wav_path)
 
         try:
-            state = model.get_state_for_audio_prompt(clean_path)
+            state = model.get_state_for_audio_prompt(clean_path, truncate=True)
             try:
                 export_model_state(state, safe_path)
             except Exception:
