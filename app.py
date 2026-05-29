@@ -48,11 +48,12 @@ import cv2
 import numpy as np
 import sounddevice as sd
 import soundfile as sf
-import whisper
+from faster_whisper import WhisperModel
 import ollama
 from PIL import Image, ImageTk
 
-from langchain_community.document_loaders import DirectoryLoader, TextLoader
+# langchain-community sunset 2026-05 — using standalone replacement
+from doc_loader import DirectoryLoader, TextLoader
 from langchain_core.documents import Document
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -67,8 +68,6 @@ WAV2LIP   = BASE / "Wav2Lip"
 
 VOICE_ES     = str(VOICES / "es.wav")
 VOICE_EN     = str(VOICES / "en.wav")
-LATENT_ES    = str(VOICES / "es_latents.pth")
-LATENT_EN    = str(VOICES / "en_latents.pth")
 FACE_IMG     = str(BASE / "face.jpeg")
 WAV2LIP_PTH  = str(WAV2LIP / "checkpoints" / "wav2lip_gan.pth")
 
@@ -179,27 +178,25 @@ class CopycatApp(ctk.CTk):
             t.start()
 
             # Load Whisper while embeddings load in background
-            self._status("Loading Whisper tiny…", C_WARN)
-            self.whisper_m = whisper.load_model("tiny", device="cpu")
+            self._status("Loading Whisper tiny (faster-whisper)…", C_WARN)
+            self.whisper_m = WhisperModel("tiny", device="cpu", compute_type="int8")
 
             # By now embeddings should be ready; init ChromaDB instantly
             embed_ready.wait()
             self._status("Indexing diario/ (RAG)…", C_WARN)
             self._init_rag()
 
-            # OpenVoice v2 is heavy (~1.5 GB) — loads last
-            self._status("Loading OpenVoice v2 (voice cloner)… may take a while.", C_WARN)
+            # Pocket-TTS is lightweight (~100M params, CPU-native) — loads last
+            self._status("Loading Pocket-TTS (voice cloner)…", C_WARN)
             from tts_manager import TTSManager
             self.tts_manager = TTSManager(
                 voice_es_path=VOICE_ES,
                 voice_en_path=VOICE_EN,
-                latent_es_path=LATENT_ES,
-                latent_en_path=LATENT_EN
             )
 
             self.after(0, self._enable_btns)
             self._status("Ready. Press Escucha or Listen.", C_OK)
-            self._log("[SYSTEM] Models loaded. OpenVoice v2 active with precomputed latents.")
+            self._log("[SYSTEM] Models loaded. Pocket-TTS active.")
         except Exception as exc:
             self._status(f"Load error: {exc}", C_ERR)
             self._log(f"[ERROR] {exc}")
@@ -307,10 +304,10 @@ class CopycatApp(ctk.CTk):
 
     def _pipeline(self, lang: str):
         try:
-            # 1. STT
+            # 1. STT (faster-whisper ~4x faster on CPU)
             self._status("Transcribing…", C_WARN)
-            result    = self.whisper_m.transcribe(TMP_USER, fp16=False, language=lang)
-            user_text = result["text"].strip()
+            segments, _ = self.whisper_m.transcribe(TMP_USER, language=lang, beam_size=1)
+            user_text   = " ".join(s.text.strip() for s in segments).strip()
             if not user_text:
                 self._status("No speech detected.", C_WARN)
                 self.after(0, self._enable_btns)
