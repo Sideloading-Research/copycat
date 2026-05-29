@@ -25,6 +25,6 @@ git+https://github.com/myshell-ai/MeloTTS.git
 git+https://github.com/myshell-ai/OpenVoice.git
 
 # Wav2Lip dependencies
-librosa>=0.10.0
+librosa==0.9.1
 scipy>=1.11.0
 tqdm>=4.60.0
