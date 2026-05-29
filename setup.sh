@@ -26,6 +26,9 @@ uv pip install torch torchvision torchaudio --index-url https://download.pytorch
 echo "==> [3/7] Python packages (main + Wav2Lip)"
 uv pip install -r requirements.txt
 
+echo "==> [3.5/7] Installing OpenVoice v2 (bypassing strict numpy requirement)"
+uv pip install git+https://github.com/myshell-ai/OpenVoice.git --no-deps
+
 echo "==> [5/7] Wav2Lip weights (wav2lip_gan.pth, ~416 MB)"
 mkdir -p Wav2Lip/checkpoints
 if [ ! -f "Wav2Lip/checkpoints/wav2lip_gan.pth" ]; then
