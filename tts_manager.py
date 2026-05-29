@@ -44,9 +44,8 @@ class TTSManager:
             self.models[language] = TTSModel.load_model(
                 language=cfg,
                 quantize=False,
-                lsd_decode_steps=5,
+                lsd_decode_steps=3,
                 temp=0.5,
-                noise_clamp=0.1,
             )
         return self.models[language]
 
