@@ -62,6 +62,9 @@ class TTSManager:
         if sr != 24000:
             import librosa
             data = librosa.resample(data, orig_sr=sr, target_sr=24000)
+        peak = np.max(np.abs(data))
+        if peak > 0 and peak < 0.95:
+            data = data / peak * 0.95
         sf.write(temp_path, data, 24000, subtype="PCM_16")
         return temp_path
 
