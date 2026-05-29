@@ -3,6 +3,8 @@
 import os
 import warnings
 
+import numpy as np
+
 warnings.filterwarnings("ignore")
 
 from pocket_tts import TTSModel, export_model_state
@@ -96,5 +98,9 @@ class TTSManager:
 
         model = self._get_model(language)
         audio = model.generate_audio(self.voice_states[language], text)
+        audio = audio.numpy()
+        max_val = np.max(np.abs(audio))
+        if max_val > 0:
+            audio = audio / max_val * 0.95
         import soundfile as sf
-        sf.write(output_path, audio.numpy(), model.sample_rate)
+        sf.write(output_path, audio, model.sample_rate)
