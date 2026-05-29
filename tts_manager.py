@@ -44,21 +44,11 @@ class TTSManager:
             self.models[language] = TTSModel.load_model(
                 language=cfg,
                 quantize=False,
-                lsd_decode_steps=3,
-                temp=0.5,
+                lsd_decode_steps=5,
+                temp=0.7,
             )
         return self.models[language]
 
-    def _prepare_wav(self, wav_path: str) -> str:
-        import soundfile as sf
-        import librosa
-
-        temp_path = wav_path.replace(".wav", "_24k_mono.wav")
-        if os.path.exists(temp_path):
-            return temp_path
-        data, _ = librosa.load(wav_path, sr=24000, mono=True)
-        sf.write(temp_path, data, 24000, subtype="PCM_16")
-        return temp_path
 
     def _extract_state(self, lang: str, wav_path: str):
         safe_path = os.path.join("voices", f"{lang}_pocket.safetensors")
@@ -67,10 +57,9 @@ class TTSManager:
             return model.get_state_for_audio_prompt(safe_path)
 
         model = self._get_model(lang)
-        clean_path = self._prepare_wav(wav_path)
 
         try:
-            state = model.get_state_for_audio_prompt(clean_path, truncate=True)
+            state = model.get_state_for_audio_prompt(wav_path, truncate=True)
             try:
                 export_model_state(state, safe_path)
             except Exception:
