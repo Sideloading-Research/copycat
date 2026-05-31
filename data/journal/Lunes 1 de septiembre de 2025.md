@@ -1,2 +1,0 @@
-Hoy empiezo de nuevo el turno normal en Newry.  La verdad es que tengo ganas locas de volver al trabajo remoto. En base a la verdad pienso firmemente que aplicar automatismos e IA al trabajo y a todo lo demás nos va a dar una vida mucho más fácil y cómoda. Creo que va a merecer la pena. Debo de luchar por una vida así. Por mi y mi gatita. Y por nuestros gatitos.
-Vuelvo a la oficina y veo una cierta necesidad de remoto, plantó mi semilla. Aunque no dure aquí entiendo que debo de mover aquí y allí dicho concepto. Para ir dinamizando la sociedad a un mundo más cómodo y feliz. 

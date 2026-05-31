@@ -1,2 +1,0 @@
-Hoy soñé que tenía un hermano y que compartíamos la misma mujer. Hoy no viene Elena por su viaje en ciernes. Cristina en principio viene a la reunión de Mensa. Hoy tengo entrevista de Lucíernaga Cristina. Y tengo que hacer más tareas de IA. Y limpiar la casa. Ir a la reunión de Mensa. Y comer ligero.
- Clase con Irena y hacer antes duolingo a tope. Veré luego si puedo hablar con la farmacia de sus suplementos al lado del trabajo.

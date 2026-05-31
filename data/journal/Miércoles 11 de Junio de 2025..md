@@ -1,1 +1,0 @@
-Hoy dormí bien y sin sueños. Pero sigo cansado. Espero poder acelerar mi adaptación. No me encuentro muy bien animicamente. Y además estoy animado y quiero empezar la dinámica de la empresa pronto.Es difícil subir de sueldo en este país, sea por ascensos, plus o cambio de trabajo. No se si lograré mi sueño,  me percibo muy hueco y tonto. Y temo ser un fraude y un fracaso.

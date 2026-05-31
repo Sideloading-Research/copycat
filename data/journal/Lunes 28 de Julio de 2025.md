@@ -1,5 +1,0 @@
-Hoy no soñé. Me levanté, desayuné, vestí y le di los buenos días a Elena. Me fui al trabajo, avance en el MVP de Pre Compliance,  Paulo me dio por el WhatsApp privado la buena noticia de que podemos seguir con nuestra empresa. Después procedí a estudiar lo que es MCP y A2A. Hoy lanzó el MVP de Fercho, progreso con uno de Rodri de ASO. 
-
-He registrado los dominios por dos años de Thelivingalgorithm.es y stoptheclock.es para probar suerte con la educación en IA y biohacking. En un intento de hacer personalidad digital en la Red y ser mi propia marca. El objetivo es eventualmente hacer negocio con artículos, publicidad, libros, proyectos. 
-Sigo con los libros, voy lento con wl prestado de Elena, aunque de buenas intenciones mi rigidez me hace ir lento por el cambio de planes mental que tenía para mi hoja de ruta educativa. 
-Lamento no haber progresado más en matemáticas. 

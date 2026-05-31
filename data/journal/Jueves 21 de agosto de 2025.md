@@ -1,1 +1,0 @@
-Me desperté a las 4:30 y me puse a leer el libro se oratoria. Luego me he conectado al ordenador de empresa y no puedo entrar. Todo es horrible. Todo es señal de tirar la toalla. Odio esta empresa. Necesito terminar el libro y ponerme a buscar trabajo ya mismo.

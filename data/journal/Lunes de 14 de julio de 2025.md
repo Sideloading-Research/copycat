@@ -1,1 +1,0 @@
-Hoy he dormido unas 7h. He soñado cosas raras pero no las recuerdo. He descansado este fin de semana. Hoy terminaré el primer funcional que dejé el viernes. Luego iré a reunirme con Pablo Rubio. Luego empezaré sus funcionales, que serán tres. Después seguire revisando funcionales antiguos y cruzaré con los proyectos existentes para no pasarme.

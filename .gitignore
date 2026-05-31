@@ -9,13 +9,14 @@ venv/
 .vscode/
 .idea/
 
-# Data (user content — never commit)
-data/journal/
-data/vector_db/
-data/voices/
-data/picture/
-data/behavior/
-data/checkpoints/
+# Data directories (each has its own .gitignore)
+# data/
+# data/behavior/
+# data/checkpoints/
+# data/journal/
+# data/picture/
+# data/vector_db/
+# data/voices/
 
 # Temp files
 tmp/

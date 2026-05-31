@@ -1,3 +1,0 @@
-Hoy soñé cosas extrañas e inconexas solo recuerdo rostros. Me encuentro un poco cansado. Hoy haré bici y pesas, después Anki y Duolingo. Estoy pensando en recomenzar mi mind file para mi sideload. Me bajaré el repositorio de Roman y copiaré la estructura para ir agregando todos los datos necesarios. 
-Y luego agregaré mi huella digital textual limpia y formateada para que todo encaje.
-Haré una serie de pruebas. Quiero comprar la webcam Tapo, la báscula de bioimpedancia y cómo regalos de cumpleaños. Quiero comprar suplementos Hoy. Ayer me di cuenta de que haga lo que hagan caigo bien a todo el mundo. No sé qué hacer, la gente está loca. Y los proyectos van lentos, incluido el de Ramón. 

@@ -1,2 +1,0 @@
-Fui a trabajar. En vez de pesas hice bicicleta. Porque estaba cansado. Y me vi la segunda temporada de El mejor segundo hospital de la galaxia. 
-Estaba estresado porque no encuentro manera de manejar el caos y desorden de la empresa. Pasaría por dinámica pero todos han pillado la inercia de los vacíos españoles en cuanto a organización y flujo de trabajo.

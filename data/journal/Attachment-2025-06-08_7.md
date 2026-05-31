@@ -1,1 +1,0 @@
-Estuve todo el domingo tranquilamente viendo capítulos de El segundo mejor hospital de la galaxia. Leyendo un poco de Meditaciones de Marco Aurelio. Y descansando. También desarrollé el proyecto base de métrica objetiva de la fidelidad del sideloading. 

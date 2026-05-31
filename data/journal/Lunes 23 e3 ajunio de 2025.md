@@ -1,2 +1,0 @@
-EL viernes fui a Mensa y llevé a Franco del curro. Estoy trabajando con cuidado en ir metiendo a potenciales en Mensa a ver que pasa. Luego el sábado limpie la casa
-El domingo le di a Nicolás las funciones de chat, resumen de noticias y planifique mis próximos 5 años para ser empresario, rico y tener IA como poder. Después hoy soñé que estaba en el metro cochambroso yendo de un lado para otro.

@@ -1,1 +1,0 @@
-Hoy llegó el portátil. Que inútiles son todos en esta empresa y país. Ni un maletín de mierda. Ni ratón, son unos ratas. No voy a luchar contra ellos. Si ellos desechan y no hacen bien las cosas yo sí lo voy hacer. Pero no me voy a quemar. Has pasado por mil lugares. Y por mil más que voy a pasar. Así que no merece la pena. Hoy me Dan el alta para mañana.

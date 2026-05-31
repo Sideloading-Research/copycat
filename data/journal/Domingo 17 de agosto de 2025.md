@@ -1,1 +1,0 @@
-Hoy descansamos en casa. Y hablamos de cómo encarar mi situación laboral. Después vimos sobre octavio y livia drisila de Eva Tobalina. Elena soñó con Ana y que la veía con kuevo novio estaban en el.sur de Madrid.

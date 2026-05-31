@@ -1,1 +1,0 @@
-Descanse todo el día y me compre una tabla de planchar y plancha. Planche todo el día. Y me dejé todo preparado. 

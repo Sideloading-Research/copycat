@@ -22,7 +22,7 @@ An **offline, CPU-only** personal AI avatar that looks like you, speaks with you
 ## One-command Setup
 
 ```bash
-git clone <this-repo> copycat
+git clone <repo-url> copycat
 cd copycat
 bash setup.sh
 ```
@@ -32,8 +32,9 @@ The script does **everything**:
 - Creates a `venv` with the ultra-fast `uv` package manager
 - Downloads CPU-only PyTorch to save ~3 GB
 - Installs all Python dependencies with `uv`
-- Downloads `wav2lip.pth` (~416 MB)
+- Downloads `wav2lip.pth` (~416 MB) into `src/Wav2Lip/checkpoints/`
 - Pulls `qwen2.5:3b` with Ollama
+- Includes Wav2Lip source code
 - Creates the required folder structure
 
 > **Note:** First run downloads ~2 GB of additional models (XTTS v2, Whisper, sentence-transformer) automatically.
@@ -46,15 +47,23 @@ Place these files **before** running:
 
 ```
 copycat/
+├── src/
+│   ├── main.py                 ← Entry point
+│   ├── core/                   ← STT, RAG, LLM, TTS, Wav2Lip pipeline
+│   ├── ui/                     ← CustomTkinter GUI (splash, chat, settings)
+│   ├── utils/                  ← Paths, environment tuning
+│   ├── Wav2Lip/                ← Lip-sync inference
+│   └── doc_loader.py           ← Langchain-community replacements
 ├── data/
-│   ├── picture/
-│   │   └── face.jpeg      ← Your front-facing portrait (256×256 minimum)
-│   ├── voices/
-│   │   ├── es.wav          ← Spanish voice reference (6-15s, clean)
-│   │   └── en.wav          ← English voice reference (6-15s, clean)
-│   └── journal/            ← Your diary entries (.md)
-│       ├── 2024-07-15.md
-│       └── ...
+│   ├── picture/face.jpeg       ← Avatar portrait
+│   ├── voices/{lang}.wav       ← Voice reference samples
+│   ├── behavior/behavior.txt   ← Personality definition
+│   ├── journal/*.md            ← Diary entries (RAG knowledge base)
+│   └── vector_db/              ← ChromaDB persistent index
+├── tmp/                        ← Temporary audio / video files
+├── setup.sh                    ← One-command installer
+├── run.sh                      ← Launcher
+└── requirements.txt            ← Python dependencies
 ```
 
 **Sample recording texts:**
@@ -66,6 +75,12 @@ copycat/
 ---
 
 ## Run
+
+```bash
+./run.sh
+```
+
+Or manually:
 
 ```bash
 source venv/bin/activate
@@ -104,7 +119,7 @@ The system prompt instructs the model to **never** reveal it is an AI, language 
 
 | Symptom | Fix |
 |---------|-----|
-| _"Wav2Lip not found"_ | Ensure `src/Wav2Lip/` exists (submodule) |
+| _"Wav2Lip not found"_ | Ensure `src/Wav2Lip/` exists (included in repo) |
 | Wav2Lip crashes | Reduce batch size in `engine.py:_sync_lips` |
 | No microphone | `python -c "import sounddevice; print(sounddevice.query_devices())"` |
 | ChromaDB error | Delete `data/vector_db/` and restart |
@@ -145,7 +160,7 @@ copycat/
 │   ├── utils/
 │   │   ├── paths.py            ← Centralised path registry (PATHS dict)
 │   │   └── setup_env.py        ← CPU thread tuning, torch.load patch, warning filters
-│   ├── Wav2Lip/                ← Submodule: lip-sync inference
+│   ├── Wav2Lip/                ← Lip-sync inference
 │   ├── doc_loader.py           ← Standalone replacements for deprecated langchain-community
 │   └── assets/logo.png         ← Splash icon
 ├── data/
@@ -154,7 +169,10 @@ copycat/
 │   ├── behavior/behavior.txt   ← Personality definition
 │   ├── journal/*.md            ← Diary entries (RAG knowledge base)
 │   └── vector_db/              ← ChromaDB persistent index
-└── tmp/                        ← Temporary audio / video files
+├── tmp/                        ← Temporary audio / video files
+├── setup.sh                    ← One-command installer
+├── run.sh                      ← Launcher
+└── requirements.txt            ← Python dependencies
 ```
 
 ### Execution Flow
