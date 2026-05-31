@@ -1,0 +1,2 @@
+Hoy voy a devolver mi ordenador. En donde Allfund en calle padres dominicos 7. Les daré el ordenador. Firmaré el finiquito. Dejo la caja
+ Me despido y me voy. Ayer hice la nueva tabla de 6 días de pesas. A ver que tal me va. Recuerda que es de volumen así que empieza ligero.

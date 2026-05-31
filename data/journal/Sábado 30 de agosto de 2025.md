@@ -1,0 +1,2 @@
+Este sábado compraré frutas, suplementos, zapatillas de andar por casa, haré bicicleta, tensores (he de planificar bien como), planchar ropa, preparar comidas, comprar cursor, leer , meditar y descansar.
+Veré cómo puedo avanzar con el grupo de IA CPA y sideload. También buscaré cómo colaborar con Anton Kulaga para buscar factores fáciles y económicos para mejorar la longevidad. 

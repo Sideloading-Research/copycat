@@ -1,0 +1,1 @@
+Hoy aoñe que estaba en una playa de un mundo alternativo donde ha ia un Oriente más amplio y edificios al fondo donde se veía obras. Me dirigía pir la playa al hotel transparente más alto del mundo y me pillaba la habitación de la vida, daba vértigo.

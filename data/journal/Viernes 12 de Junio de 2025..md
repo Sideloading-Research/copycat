@@ -1,0 +1,1 @@
+Hice las tareas de seguridad porque el lunes, viernes y miércoles vienen gente a ver la seguridad de la empresa. Así que toca portarse. Hice compra, limpieza, deporte y me vi la última de doctor who, me gustó el actor de Ncuti Gatwa pero la serie era muy woke a la fuerza y el guión estaba mal hecho. Así que la han cancelado. Una pena pero así es la vida.

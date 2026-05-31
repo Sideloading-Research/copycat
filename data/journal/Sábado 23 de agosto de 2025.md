@@ -1,0 +1,1 @@
+Hoy dormí 10h 15m y no soñé. Tuve migraña por el alcohol de ayer. Hoy desayuné tostada fon jamón y aguacate. Elena hizo ayer la compra. Hoy comí unas coles de Bruselas salteadas con lomo de pavo, cebollas acompañados de piparras, y un huevo frito de los comprados en Laredo. Estaba muy bueno.

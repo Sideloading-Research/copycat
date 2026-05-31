@@ -1,0 +1,2 @@
+Trabajé en horario de verano. Avance en revisar documentación de tres proyectos de Fernando. Elena propone que vaya el viernes
+a su casa a hablar con su padre. A la tarde hago trabajo en casa para escanear perfiles de LinkedIn. 

@@ -1,0 +1,3 @@
+Hoy termine el funcional y técnico del b2b, pedí a edu que me de un ML y DS para el puesto. Le pasaré a Diana los CV de José y Álvaro. Le di las setas de Victor. Trabaje en el proyecto de Ramón. Se atrasan el y Enrique por asuntos personales. Emilio está deprimido. Y la ACE muy parada.
+En Mensa Pou malmete contra mí por envidia. 
+Elena me apoya. Dejo el proyecto Spiral porque Paulo ni Franco son serios ni pueden trabajar a mi nivel. Pablo lo he descartado del proyecto de la Asociación para el estudio de la  AGI. Me creo un perfil en Linktree y lo conecto a mi Red de webs, blogs y RRSS profesionales para mejorar mi SEO. 

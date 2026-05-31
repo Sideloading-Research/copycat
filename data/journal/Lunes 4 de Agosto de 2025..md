@@ -1,0 +1,1 @@
+No soñé. Dormí bien. Estoy relajado. Hoy vamos a la playa de laredo. Fuimos a la.playa, quemamos los pies con la arena, nos bañamos en el Cantábrico,  comimos dos bocatas de embutido y nos echa.os una siesta de dos horas ,y volvimos reventados del calor, luego hablamos del problema d emi trabajo. Luego fuimos a cenar y cenamos mejillones, nachos con carne y patatas mojo, y sidra.

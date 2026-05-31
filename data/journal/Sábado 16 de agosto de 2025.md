@@ -1,0 +1,3 @@
+Hoy nos vimos los capítulos finales de Forever. Satisfactorio pero podrían haber explicado la inmortalidad del protagonista. 
+Elena hizo compra y me ayudo con la comida y cena. El lunes hablo con el doctor y luego con Edu sobre si puedo trabajar en remoto estas dos semanas hasta el 27. No me queda otra.
+Me estudiaré el resto de libros en los próximos días. Tengo que aclarar con Armando la cláusula sospechosa. Después tengo que estudiar con cuidado las empresas que más casen con mis objetivos. 

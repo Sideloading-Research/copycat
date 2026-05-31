@@ -1,0 +1,2 @@
+Hoy Elena me mandó reposo absoluto. Me ayudo con la comida, la compra y con ideas de como ir con el doctor, la empresa y cómo planificar mi empresa. Estoy entrenando la memoria, volví a duolingo y Anki. Me preparo para estudiar esta semana el material de IA y entrevistas para buscar trabajo en otra empresa mejor y en remoto. No debo tener apego a Newry.
+Soñé que Elena y Cristina le daban una paliza de Pressin Catch a Armando atizandole con sillas plegables de aluminio. 

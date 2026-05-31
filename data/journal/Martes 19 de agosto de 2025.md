@@ -1,0 +1,2 @@
+Terminé el libro de las entrevistas. 
+Pedí a Notebooklm con el libro que analizará mi CV. Y a Gemini Deepresearch que buscará que empresas eran las mejores para mis términos de búsqueda. Ahora voy a crear un correo de contacto y les paso mi CV. A ver si tengo suerte y cambio de trabajo. Soñé que estaba en algo parecido a las guerras de las galaxias y toso estaba hecho de cristal.

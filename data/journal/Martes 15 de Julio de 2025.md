@@ -1,0 +1,5 @@
+Hoy dormí bien. Soñaba algo pero lo olvidé. En el trabajo terminé el primer funcional para Onboarding. Y empecé el segundo funcional de Onboarding para poder trabajar con el mismo. Tengo que terminar de Investigar si Firebase tiene la capacidad de generar los elementos a demanda hasta la mínima granularidad. 
+
+Luego llegué a casa y comí bien, me dolía la cabeza y me eche la siesta. Elena me llamó y me despertó, tuve migraña, y hablamos de que no soportaban Franco y su forma de proceder. De lo pasivo invasivo que es, que no ha tenido tiempo en dos años de tener ideas propias, de que se pego a mi como parásito, de que intentó aprovechar mi buena voluntad. Es manipulador. Y cree en las estafas de criptomonedas, emprendimiento americano, etc. Y no tiene nada. Vio lo de sideload y no lo entendió,  se lo ha querido apropiar. He sido un iluso por ser bueno y educado y por la caridad entra la peste. Anotado, nunca ofrezcas caridad, los ambrientos te consumiran. 
+
+Paulo y Cristina, y Elena desconfían porque lo ven desde fuera. Tenían razón. He avisado a Román y Turchin,  me he disculpado por mi error de introducirlo en el grupo. Es la última vez que lo hago. Se acabó. 

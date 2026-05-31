@@ -1,0 +1,2 @@
+Ayer Viajamos a Fuente de la Victoria. A ver el río ASO. Y fuimos a un bar llamado La Tierruca. Bebimos dos claritas sin. Morro de cerdo al estilo La Tierruca. Después nos fuimos a las pozas del río Aso a bañarnos. Estaban muy frías. Y conocimos gente. 
+Nos tomamos un café y unas claritas sin en el bar fuente de la vega. Y por la noche nos fuimos a la Atalaya. Subimos para ver Laredo de noche. Me torci el tobillo y me han dado tres semanas de baja y luego me toca el 28 cirugía. Me mete en problemas todo el plan con mi trabajo. Llore de frustración. 
