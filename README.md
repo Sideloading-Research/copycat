@@ -6,6 +6,35 @@ An **offline, CPU-only** personal AI avatar that looks like you, speaks with you
 
 ---
 
+## Quick Start
+
+```bash
+# 1. Clone
+git clone https://github.com/Sideloading-Research/copycat
+cd copycat
+
+# 2. Install everything (system pkgs, venv, models, ~15 min)
+bash setup.sh
+
+# 3. Prepare your assets (see below)
+# 4. Launch
+./run.sh
+```
+
+### Assets you must provide
+
+| File | What it is | How to create it |
+|------|-----------|------------------|
+| `data/picture/face.jpeg` | Your front-facing portrait (256×256 px minimum, no glasses, good lighting) | Selfie with a neutral expression, crop to square |
+| `data/voices/es.wav` | Spanish voice reference (6-15 seconds, clean audio, no background noise) | Record with your phone: _"Hoy fue un día bastante productivo, aunque empecé un poco tarde. Por la mañana terminé el informe que tenía pendiente y después aproveché para ordenar las ideas del proyecto nuevo."_ |
+| `data/voices/en.wav` | English voice reference (6-15 seconds, clean audio) | Record: _"I've been thinking a lot about how quickly things change around us. One day you're comfortable with your routine, and the next you're learning something completely new."_ |
+| `data/journal/*.md` | Your diary entries — one `.md` file per day | Any markdown file. Example `data/journal/2025-01-01.md`: `# January 1\nToday I started learning guitar.` |
+| `data/behavior/behavior.txt` | Personality description for the AI to role-play | Free text. Example: `You are a 28-year-old software developer. You are curious, sarcastic, and love philosophy. You speak in short sentences.` |
+
+> **Note:** First run will download ~2 GB of additional models (XTTS v2, Whisper, sentence-transformer) automatically.
+
+---
+
 ## Minimum Requirements
 
 | Hardware | Minimum |
@@ -36,8 +65,6 @@ The script does **everything**:
 - Pulls `qwen2.5:3b` with Ollama
 - Includes Wav2Lip source code
 - Creates the required folder structure
-
-> **Note:** First run downloads ~2 GB of additional models (XTTS v2, Whisper, sentence-transformer) automatically.
 
 ---
 
