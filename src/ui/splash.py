@@ -56,7 +56,7 @@ class SplashScreen(ctk.CTkToplevel):
 
         ctk.CTkLabel(
             self,
-            text="v0.1.0",  # Versión inicial de Copycat[cite: 11]
+            text="v0.1.0",  # Initial version of Copycat
             font=ctk.CTkFont(size=10),
             text_color="#1F6FEB",
         ).pack(pady=(0, 16))
@@ -77,11 +77,11 @@ class SplashScreen(ctk.CTkToplevel):
         self._status.pack()
 
     def set_progress(self, value: float, message: str = "") -> None:
-        """Update the progress bar (0.0–1.0) and status text."""
-        self._progress.set(value)
+        """Update the progress bar (0.0–1.0) and status text (thread-safe)."""
+        self.after(0, lambda: self._progress.set(value))
         if message:
-            self._status.configure(text=message)
-        self.update()
+            self.after(0, lambda: self._status.configure(text=message))
+        self.update_idletasks()
 
     def close(self) -> None:
         """Destroy the splash window."""

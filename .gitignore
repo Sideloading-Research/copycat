@@ -1,15 +1,33 @@
+# Python
 __pycache__/
 *.pyc
 *.pyo
 venv/
+.env
+
+# IDE
 .vscode/
 .idea/
-src/chroma_db/
+
+# Data (user content — never commit)
+data/journal/
+data/vector_db/
+data/voices/
+data/picture/
+data/behavior/
+data/checkpoints/
+
+# Temp files
+tmp/
 _temp_*
 _tmp_*
+
+# Model weights (large binaries)
 *.pth
 *.h5
 *.pkl
+
+# Media output
 *.avi
 *.mkv
 *.gif
