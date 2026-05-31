@@ -22,7 +22,7 @@ An **offline, CPU-only** personal AI avatar that looks like you, speaks with you
 ## One-command Setup
 
 ```bash
-git clone <repo-url> copycat
+git clone https://github.com/Sideloading-Research/copycat
 cd copycat
 bash setup.sh
 ```
