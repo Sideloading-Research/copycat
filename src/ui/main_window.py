@@ -254,13 +254,32 @@ class MainWindow(ctk.CTk):
         _next()
 
     # ── input handling ───────────────────────────────────────────
+    #
+    # Two input modes:
+    #   1. Text entry  — user types + presses Enter or clicks "Send".
+    #   2. Voice       — user presses the microphone button, speaks,
+    #                    presses again to stop and process.
+    #
+    # The microphone toggle (speaker icon) acts as a master cut-off
+    # for ALL audio I/O: when disabled, both recording and playback
+    # (including lip-sync animation) are skipped.  Text input still
+    # works so the user can chat without voice.
+    # ─────────────────────────────────────────────────────────────
 
     def _on_enter_key(self, event):
+        """Submit the text entry when the user presses the Enter key.
+
+        Returns ``"break"`` so the event is consumed by this handler
+        and not propagated further by Tkinter's internal bindings.
+        """
         self._send_text_manual()
         return "break"
 
     def _send_text_manual(self):
-        """Send the text entry content as a manual pipeline request."""
+        """Read the text entry, append to chat, and fire the pipeline.
+
+        The pipeline runs on a daemon thread so the UI stays responsive.
+        """
         msg = self.entry_text.get().strip()
         if msg:
             self.entry_text.delete(0, "end")
@@ -271,30 +290,54 @@ class MainWindow(ctk.CTk):
             ).start()
 
     def _toggle_mic(self):
-        """Enable / disable the microphone button."""
+        """Toggle the master audio cut-off on/off.
+
+        When *off*:
+        - The microphone button turns dark blue and is ignored.
+        - Any ongoing recording is stopped immediately.
+        - Pipeline output will still compute text but **skip**
+          audio playback and lip-sync animation (see
+          ``_process_pipeline``).
+
+        When *on*:
+        - The microphone button reverts to its normal idle colour.
+        - Voice recording and audio/video output work normally.
+        """
         self.mic_enabled = not self.mic_enabled
         if self.mic_enabled:
+            # Restore normal colours and unmuted icon.
             self.btn_mic_toggle.configure(fg_color=C_OK, text="\U0001f50a")
             self.btn_mic.configure(fg_color=C_IDLE)
+            self._update_status("Microphone enabled", C_OK)
         else:
+            # Dark blue + muted icon to indicate disabled state.
             self.btn_mic_toggle.configure(fg_color=C_MIC_OFF, text="\U0001f507")
             self.btn_mic.configure(fg_color=C_MIC_OFF)
+            # If a recording was in progress, abort it immediately.
             if self.recording:
                 self.recording = False
                 self.audio.stop_recording(str(PATHS["tmp_user"]))
+            self._update_status("Microphone disabled — audio I/O cut", C_ERR)
 
     def _toggle_voice_interaction(self):
-        """Toggle microphone recording on/off."""
+        """Start / stop a voice recording session.
+
+        This is the handler for the large microphone button.
+        If the master audio cut-off (``self.mic_enabled``) is
+        ``False`` the request is rejected with a warning.
+        """
         if not self.mic_enabled:
             self._update_status("Microphone is disabled", C_ERR)
             return
         lang = self.lang_var.get()
         if not self.recording:
+            # Start capturing from the mic.
             self.recording = True
             self.btn_mic.configure(fg_color=C_ACTIVE)
             self._update_status(f"Listening ({lang})...", C_ACTIVE)
             self.audio.start_recording()
         else:
+            # Stop recording and process the captured audio.
             self.recording = False
             self.btn_mic.configure(fg_color=C_IDLE)
             self.audio.stop_recording(str(PATHS["tmp_user"]))
@@ -304,14 +347,23 @@ class MainWindow(ctk.CTk):
             ).start()
 
     def _process_pipeline(self, lang, manual_text):
-        """Run the engine pipeline, then play the result."""
+        """Run the engine pipeline, then play the result.
+
+        If ``self.mic_enabled`` is ``False`` the audio + lip-sync
+        output stage is skipped entirely — the bot still produces
+        text in the chat but remains visually silent.  This allows
+        the user to interact via text alone without unwanted voice
+        or animation.
+        """
         success = self.engine.run_pipeline(
             lang,
             manual_text=manual_text,
             status_cb=self._update_status,
             chat_cb=self._append_to_chat,
         )
-        if success:
+        if success and self.mic_enabled:
+            # Play audio on a background thread; video loops on the
+            # main thread via ``after()`` callbacks.
             threading.Thread(
                 target=self.audio.play_audio,
                 args=(str(PATHS["tmp_bot"]),),
