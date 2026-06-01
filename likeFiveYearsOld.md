@@ -260,7 +260,8 @@ app.py (the boss)
 │   └── Launches pipeline in a separate thread:
 │       ├── Whisper  →  text
 │       ├── ChromaDB →  diary context
-│       ├── Ollama   →  response
+│       ├── location.py → time + place
+│       ├── Ollama   →  response (with time+place in prompt)
 │       ├── XTTS v2  →  .wav audio file
 │       ├── Wav2Lip  →  .mp4 video with synced lips
 │       └── Play audio + video
@@ -271,3 +272,69 @@ app.py (the boss)
     ├── Log box (text of what's happening)
     └── Buttons: Escucha (Spanish) / Listen (English)
 ```
+
+---
+
+## 11. How does Copycat know the date, time and where you are?
+
+**In one sentence:** It reads your computer's clock and, if you are
+connected to the internet, it asks a free service "where is this IP
+address?" to find out your city, region and country.
+
+### Step by step
+
+1. **Internet check** — `location.py` tries to open a tiny connection
+   to Cloudflare's DNS server (1.1.1.1). If it succeeds, the internet
+   is available. The result is cached for 60 seconds so we don't waste
+   time checking again on every message.
+
+2. **If internet is ON** — it calls `ip-api.com`, a free geo-location
+   service that needs no API key. It returns your city, region,
+   country, timezone, latitude and longitude. This data is cached for
+   **one hour** so we don't spam the service.
+
+3. **If internet is OFF** — it falls back to reading your system
+   timezone from `/etc/timezone` (or `/etc/localtime`). You get the
+   correct time and timezone name, but no city/country.
+
+4. **The prompt is enriched** — before calling Ollama, the engine
+   calls `get_context_string()` which builds a short sentence like:
+
+   > *"It is 2026-06-02 00:39 (CEST) in Europe/Madrid. You are in
+   > Madrid, Community of Madrid, Spain."*
+
+   This sentence is injected into the LLM prompt as a new `Context:`
+   line, so the bot knows what time it is and where it "is".
+
+5. **Logged** — the context string and internet status are also saved
+   to `data/logs/chats.jsonl` so you can see what the bot knew at
+   each turn.
+
+### What this achieves
+
+- The bot can say things like *"Good evening! It's almost midnight
+  here in Madrid."* instead of generic responses.
+- If you move to another city and restart Copycat, it will detect the
+  new location (IP changes).
+- If you have no internet, it still knows the time and timezone.
+
+### Technical details
+
+| Feature | Online | Offline |
+|---------|--------|---------|
+| Date + time | System clock | System clock |
+| Timezone (IANA) | Geo-IP + `/etc/timezone` | `/etc/timezone` |
+| City / region / country | ip-api.com (free) | Not available |
+| Internet detection | TCP connect to 1.1.1.1:80, 3 s timeout | Same |
+
+The service `ip-api.com` is free for up to 45 requests per minute
+from one IP — plenty for a personal chatbot. No registration
+required. If the service ever goes down, Copycat silently falls back
+to the offline "timezone only" mode.
+
+### Files involved
+
+- `src/core/location.py` — the whole mechanism (internet check,
+  geo-IP lookup, system timezone fallback, context string builder).
+- `src/core/engine.py` — `run_pipeline()` calls `get_context_string()`
+  and passes the result to `_build_persona_prompt()`.
