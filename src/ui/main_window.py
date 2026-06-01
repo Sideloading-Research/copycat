@@ -12,13 +12,14 @@ from src.core.audio import AudioHandler
 from src.utils.paths import PATHS
 
 # Status-bar colour palette.
-C_IDLE, C_ACTIVE, C_OK, C_WARN, C_ERR, C_INFO = (
+C_IDLE, C_ACTIVE, C_OK, C_WARN, C_ERR, C_INFO, C_MIC_OFF = (
     "#1f538d",
     "#b71c1c",
     "#2e7d32",
     "#e65100",
     "#c62828",
     "#0277bd",
+    "#0d2b5c",
 )
 
 
@@ -43,6 +44,7 @@ class MainWindow(ctk.CTk):
         self.engine = engine or CopycatEngine()
         self.audio = AudioHandler()
         self.recording = False
+        self.mic_enabled = True
 
         self._build_ui()
         self._load_avatar_static()
@@ -103,12 +105,21 @@ class MainWindow(ctk.CTk):
 
         self.input_area = ctk.CTkFrame(self.chat_frame, fg_color="transparent")
         self.input_area.grid(row=1, column=0, sticky="ew")
+        self.input_area.grid_columnconfigure(0, weight=1)
 
         self.entry_text = ctk.CTkEntry(
-            self.input_area, placeholder_text="Type..."
+            self.input_area, placeholder_text="Type a message..."
         )
-        self.entry_text.pack(side="left", expand=True, fill="x", padx=(0, 10))
-        self.entry_text.bind("<Return>", lambda e: self._send_text_manual())
+        self.entry_text.grid(row=0, column=0, sticky="ew", padx=(0, 8))
+        self.entry_text.bind("<Return>", self._on_enter_key)
+
+        self.btn_send = ctk.CTkButton(
+            self.input_area,
+            text="Send",
+            width=80,
+            command=self._send_text_manual,
+        )
+        self.btn_send.grid(row=0, column=1)
 
         # ── right: avatar + controls ─────────────────────────────
         self.right_frame = ctk.CTkFrame(self, width=380)
@@ -146,6 +157,18 @@ class MainWindow(ctk.CTk):
         )
         self.btn_mic.pack(side="left", padx=10)
 
+        self.btn_mic_toggle = ctk.CTkButton(
+            self.actions_frame,
+            text="\U0001f50a",
+            width=40,
+            height=40,
+            corner_radius=20,
+            fg_color=C_OK,
+            hover_color="#1b5e20",
+            command=self._toggle_mic,
+        )
+        self.btn_mic_toggle.pack(side="left", padx=5)
+
         self.btn_config = ctk.CTkButton(
             self.actions_frame,
             text="\u2699",
@@ -155,7 +178,7 @@ class MainWindow(ctk.CTk):
             fg_color="#444444",
             command=self._open_settings,
         )
-        self.btn_config.pack(side="left", padx=10)
+        self.btn_config.pack(side="left", padx=5)
 
     # ── helpers ──────────────────────────────────────────────────
 
@@ -232,6 +255,10 @@ class MainWindow(ctk.CTk):
 
     # ── input handling ───────────────────────────────────────────
 
+    def _on_enter_key(self, event):
+        self._send_text_manual()
+        return "break"
+
     def _send_text_manual(self):
         """Send the text entry content as a manual pipeline request."""
         msg = self.entry_text.get().strip()
@@ -243,8 +270,24 @@ class MainWindow(ctk.CTk):
                 target=self._process_pipeline, args=(lang, msg), daemon=True
             ).start()
 
+    def _toggle_mic(self):
+        """Enable / disable the microphone button."""
+        self.mic_enabled = not self.mic_enabled
+        if self.mic_enabled:
+            self.btn_mic_toggle.configure(fg_color=C_OK, text="\U0001f50a")
+            self.btn_mic.configure(fg_color=C_IDLE)
+        else:
+            self.btn_mic_toggle.configure(fg_color=C_MIC_OFF, text="\U0001f507")
+            self.btn_mic.configure(fg_color=C_MIC_OFF)
+            if self.recording:
+                self.recording = False
+                self.audio.stop_recording(str(PATHS["tmp_user"]))
+
     def _toggle_voice_interaction(self):
         """Toggle microphone recording on/off."""
+        if not self.mic_enabled:
+            self._update_status("Microphone is disabled", C_ERR)
+            return
         lang = self.lang_var.get()
         if not self.recording:
             self.recording = True
