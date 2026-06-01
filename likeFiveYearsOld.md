@@ -338,3 +338,106 @@ to the offline "timezone only" mode.
   geo-IP lookup, system timezone fallback, context string builder).
 - `src/core/engine.py` — `run_pipeline()` calls `get_context_string()`
   and passes the result to `_build_persona_prompt()`.
+
+---
+
+## 12. Can Copycat grow without falling apart? (Architecture analysis)
+
+**Short answer:** Yes, but some parts need to be untangled first so
+that adding new features doesn't break existing ones.
+
+### What is already modular (good)
+
+- **Paths** — everything is in one file (`paths.py`), no scattered path
+  strings.
+- **RAG** — `RAGManager` is a clean class that wraps ChromaDB. You could
+  replace the database without touching the rest of the code.
+- **TTS** — `TTSManager` wraps XTTS v2 cleanly. The rest of the code
+  only calls `generate_tts(text, lang, path)`.
+- **Location** — `location.py` is self-contained. It reads the clock,
+  checks the internet, and builds a string. No other module depends on
+  it except `engine.py`.
+- **UI callbacks** — the pipeline sends status and chat messages via
+  callbacks (`status_cb`, `chat_cb`). The engine does not know what
+  the UI looks like.
+
+### What is tightly coupled (needs refactoring)
+
+| Problem | Where | Why it matters |
+|---------|-------|----------------|
+| **No abstract interfaces** | `engine.py` directly calls `whisper.load_model()`, `ollama.generate()`, `tts_manager.generate_tts()`, Wav2Lip as subprocess | To swap Whisper for another STT you must edit engine.py. Same for LLM, TTS, lip-sync. |
+| **CopycatEngine does EVERYTHING** | `engine.py` — pipeline orchestration, prompt building, name detection, logging, temp cleanup, behaviour sync, session saving, asset checks | 7+ responsibilities in one class. Hard to test, hard to extend. |
+| **GUI mixes view + controller** | `main_window.py` handles layout, button clicks, AND launches pipeline threads | To add a CLI or web server you'd have to duplicate logic. |
+| **No configuration file** | 50+ settings spread across 10 Python files | Changing chunk size or model name requires editing source code. |
+| **Audio handler is thread-unsafe** | `audio.py` — `recording` flag and `audio_chunks` list have no locks | Could crash if two pipelines run at the same time (unlikely but possible). |
+| **Splash thread can die silently** | `main.py` line 50 — daemon thread has no try/except | If a model fails to load, the splash never closes and the app hangs forever. |
+
+### How to fix it (step by step)
+
+1. **Add a config file** — move all model names, thread counts, chunk
+   sizes, timeouts, and paths into `config.py` (or a YAML file loaded
+   at startup). Every module reads from Config instead of hardcoding.
+
+2. **Define abstract interfaces** — create simple base classes or
+   protocols (in Python's `typing` sense):
+
+   ```python
+   class STTBackend:
+       def transcribe(self, audio_path: str) -> str: ...
+
+   class LLMBackend:
+       def generate(self, prompt: str) -> str: ...
+
+   class TTSBackend:
+       def synthesize(self, text: str, lang: str, output: str): ...
+
+   class VectorDB:
+       def search(self, query: str, k: int) -> list[str]: ...
+   ```
+
+   Then make Whisper, Ollama, XTTS v2, and Chroma implement those
+   interfaces. `CopycatEngine` receives them via constructor.
+
+3. **Split CopycatEngine** into:
+
+   - `PromptBuilder` — builds the prompt from behaviour + RAG + time
+   - `NameDetector` — regex name extraction
+   - `SessionLogger` — saves chat logs + per-turn stats
+   - `PipelineOrchestrator` — coordinates STT + RAG + LLM + TTS + LipSync
+
+4. **Extract a PipelineController** from `MainWindow` — the controller
+   handles button clicks and pipeline threads; the window only draws
+   widgets.
+
+5. **Add locks where needed** — `AudioHandler.recording` becomes a
+   `threading.Event`, `audio_chunks` uses a `threading.Lock`.
+
+6. **Wrap the splash thread** — add try/except in `main.py` so that
+   errors propagate to the UI instead of dying silently.
+
+### What becomes possible after refactoring
+
+| Feature | Before (tight coupling) | After (interfaces) |
+|---------|------------------------|---------------------|
+| Swap Ollama for OpenAI | Edit engine.py, install openai | Pass `OpenAIBackend()` to the constructor |
+| Add a second TTS voice | Edit tts_manager.py | Implement `TTSBackend` for the new engine |
+| Run as web server | Impossible (GUI required) | Call `PipelineOrchestrator.run()` from FastAPI |
+| Change chunk size | Edit rag.py line 129 | Change `config.chunk_size` |
+| Add BM25 hybrid search | Edit rag.py internals | Add a `HybridRAG` class implementing `VectorDB` |
+| Use FAISS instead of Chroma | Edit rag.py, change API calls | Write `FAISSBackend(VectorDB)` in a new file |
+
+### Current bottlenecks
+
+- **RAM**: ~8-10 GB with all models loaded (Whisper tiny + XTTS v2 +
+  sentence-transformers + Ollama). Adding more models means more
+  memory pressure.
+- **CPU**: 2 threads per model limits throughput. One pipeline turn
+  takes ~30-60 seconds (mostly LLM).
+- **Startup time**: ~30 seconds to load all models (Whisper fast,
+  XTTS v2 slow at ~6 GB load).
+- **Wav2Lip subprocess**: Invokes a separate Python process that loads
+  the model from scratch (~5-10 seconds). Latent model reuse would be
+  faster.
+- **RAG index rebuild**: For large journals (100+ MB), the initial
+  Chroma index can take several minutes. Incremental updates are fast
+  (seconds).

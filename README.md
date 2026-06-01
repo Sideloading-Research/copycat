@@ -196,3 +196,28 @@ ollama pull gemma3:1b    # 815 MB, faster but less capable
 | TTS | [XTTS v2](https://github.com/coqui-ai/TTS) |
 | Lip-sync | [Wav2Lip](https://github.com/Rudrabha/Wav2Lip) |
 | GUI | [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) |
+
+---
+
+## Roadmap / TODO
+
+### Diary raw search
+Beyond RAG (vector similarity), add a **literal full-text search** mode that reads diary entries directly (grep / keyword match) and injects the matching passage verbatim into the prompt. This gives the LLM access to exact quotations the user wrote, not just semantically similar fragments.
+
+### Modular architecture (planned)
+Current `CopycatEngine` is tightly coupled to every component. Future refactoring:
+
+- **Abstract interfaces** for STT, LLM, TTS, VectorDB, LipSync — swap any backend without editing engine.py
+- **`PipelineOrchestrator`** as the single coordinator, with STT/LLM/TTS/etc injected via constructor
+- **`PromptBuilder`** extracted from engine.py — builds the persona prompt from pluggable sections
+- **`Config` dataclass** with all hardcoded values (model names, paths, thread counts, chunk sizes)
+- **`PipelineController`** separated from `MainWindow` UI — enables CLI/server mode
+
+### Other ideas
+- Conversation memory (sliding window of last N exchanges)
+- Model unload / reload to free RAM between turns
+- Voice activity detection (VAD) for automatic recording stop
+- Hybrid RAG (dense + sparse BM25 retriever)
+- Progress bar during Wav2Lip (currently silent for ~5s)
+- Language auto-detection for output voice (no manual EN/ES toggle)
+- GPU acceleration detection + fallback
