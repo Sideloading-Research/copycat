@@ -226,8 +226,6 @@ class CopycatEngine:
                 status_cb("Thinking...", "#e65100")
 
             context_info = get_context_string(lang=lang)
-            if chat_cb:
-                chat_cb("system", f"[{context_info}]")
             prompt = self._build_persona_prompt(
                 behavior, context, user_text, lang, user_lang,
                 context_info=context_info,
