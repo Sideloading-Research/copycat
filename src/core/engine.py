@@ -135,17 +135,15 @@ class CopycatEngine:
         out_lang = lang_map.get(output_lang, output_lang)
         lang_note = f" (spoken in {lang_map.get(user_lang, user_lang)})" if user_lang else ""
         now_block = (
-            f"\n## Current situation (real world, do not invent)\n"
+            f"\n## Current situation\n"
             f"{context_info}"
         ) if context_info else ""
         rules = (
-            f"## Rules\n"
+            f"\n## Rules\n"
             f"- Never mention AI, language model, or programming.\n"
             f"- Reply in {out_lang}.\n"
             f"- Keep it under 40 words.\n"
-            f"- Be natural and conversational.\n"
-            f"- When asked about date, time, day, or location: use the "
-            f"Current situation block above — do NOT guess or invent."
+            f"- Be natural and conversational."
         )
         return (
             f"You are {name}.\n"
