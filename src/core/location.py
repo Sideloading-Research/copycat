@@ -187,39 +187,48 @@ def get_location(force_refresh=False) -> dict:
 # ---------------------------------------------------------------------------
 
 def get_context_string(lang="en") -> str:
-    """Return a short, human-readable string describing the current
-    time and the user's best-known location.
+    """Return a structured, LLM-friendly description of the current
+    time, date, day of week, and best-known location.
+
+    The output is formatted as labelled fields so the model can easily
+    parse and use each piece of information.
 
     Examples
     --------
-    - Online:  *"It is 2026-06-02 00:39 (CEST) in Europe/Madrid.
-                 You are in Madrid, Community of Madrid, Spain."*
-    - Offline: *"It is 2026-06-02 00:39 (CEST)."*
+    - Online:
+        ``Current date: 2026-06-02 (Tuesday)
+          Current time: 00:40 (CEST)
+          Timezone: Europe/Madrid
+          Location: Madrid, Community of Madrid, Spain``
+
+    - Offline:
+        ``Current date: 2026-06-02 (Tuesday)
+          Current time: 00:40 (CET)
+          Timezone: Europe/Madrid``
     """
     loc = get_location()
 
-    # ── date / time ──────────────────────────────────────────
     now = datetime.now()
     date_str = now.strftime("%Y-%m-%d")
+    day_str = now.strftime("%A")
     time_str = now.strftime("%H:%M")
     tz_abbr = _tz_abbreviation()
-    time_part = f"It is {date_str} {time_str} ({tz_abbr})"
+    tz_iana = loc.get("timezone", _get_local_timezone())
 
-    # ── timezone name (IANA) ─────────────────────────────────
-    if loc.get("timezone"):
-        time_part += f" in {loc['timezone']}"
+    lines = [
+        f"Current date: {date_str} ({day_str})",
+        f"Current time: {time_str} ({tz_abbr})",
+        f"Timezone: {tz_iana}",
+    ]
 
-    # ── location (online only) ───────────────────────────────
-    parts = [time_part + "."]
     city = loc.get("city", "")
     region = loc.get("region", "")
     country = loc.get("country", "")
-
     if city and country:
-        parts.append(f"You are in {city}, {region}, {country}." if region
-                      else f"You are in {city}, {country}.")
+        location = f"{city}, {region}, {country}" if region else f"{city}, {country}"
+        lines.append(f"Location: {location}")
 
-    return "  ".join(parts)
+    return "\n".join(lines)
 
 
 def _tz_abbreviation() -> str:
