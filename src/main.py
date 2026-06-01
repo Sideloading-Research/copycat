@@ -1,3 +1,5 @@
+"""Application entry point — splash screen, model loading, UI launch."""
+
 import sys
 import os
 import customtkinter as ctk
@@ -5,7 +7,7 @@ import customtkinter as ctk
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.ui.splash import SplashScreen
-from src.ui.main_window import MainWindow
+from src.ui.main_window import MainWindow, C_OK
 
 
 def _load_all_models(splash):
@@ -15,6 +17,7 @@ def _load_all_models(splash):
 
     splash.set_progress(0.15, "Loading Whisper, RAG & XTTS ...")
     from src.core.engine import CopycatEngine
+
     engine = CopycatEngine()
     engine.load_models()
 
@@ -27,33 +30,42 @@ def _load_all_models(splash):
 
 
 def main():
+    """Create the main window (hidden), show splash, load models, reveal UI."""
     ctk.set_appearance_mode("Dark")
-    root = ctk.CTk()
-    root.withdraw()
 
-    splash = SplashScreen(root)
+    # Single CTk instance for the entire app lifetime — destroying and
+    # recreating CTk causes Tcl/Tk ``invalid command name`` errors because
+    # the Tcl interpreter is killed.
+    app = MainWindow(auto_init=False)
+    app.withdraw()
+
+    splash = SplashScreen(app)
     engine_holder = {}
 
     def load_task():
         engine_holder["engine"] = _load_all_models(splash)
 
     import threading
+
     threading.Thread(target=load_task, daemon=True).start()
 
     def check_splash():
         if not splash.winfo_exists():
-            _reveal(root, engine_holder.get("engine"))
+            _reveal(app, engine_holder.get("engine"))
         else:
-            root.after(100, check_splash)
+            app.after(100, check_splash)
 
-    root.after(100, check_splash)
-    root.mainloop()
-
-
-def _reveal(root, engine):
-    root.destroy()
-    app = MainWindow(engine=engine)
+    app.after(100, check_splash)
     app.mainloop()
+
+
+def _reveal(app, engine):
+    """Hand-off from splash to main UI without destroying the window."""
+    if engine:
+        app.engine = engine
+        app._refresh_languages()
+    app._update_status("System Ready", C_OK)
+    app.deiconify()
 
 
 if __name__ == "__main__":

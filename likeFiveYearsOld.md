@@ -85,24 +85,107 @@ but voice cloning (XTTS) would still take the same time.
 
 ---
 
-## The key optimization trick
+## Thread tuning (already built-in)
 
 AI models on CPU spend their time multiplying huge tables of numbers
-(matrix operations). That's where these settings come from:
+(matrix operations). Copycat already sets these for you on startup:
 
-| Variable | What does it do? |
-|----------|-----------------|
-| `OMP_NUM_THREADS=6` | Uses 6 out of 8 cores for matrix multiplication |
-| `MKL_NUM_THREADS=6` | Same for Intel MKL (if PyTorch uses it) |
-| `KMP_BLOCKTIME=0` | Threads sleep when done → no fighting |
-| `KMP_AFFINITY=compact` | Each thread pinned to a fixed core → better cache |
+| Variable | Value | Why |
+|----------|-------|-----|
+| `OMP_NUM_THREADS` | 2 | Prevents thermal throttling on small laptops |
+| `MKL_NUM_THREADS` | 2 | Same for Intel Math Kernel Library |
+| `KMP_BLOCKTIME` | 0 | Threads sleep immediately → less fighting |
+| `KMP_AFFINITY` | compact | Each thread sticks to one core → better cache |
+| `OLLAMA_NUM_THREADS` | 2 | LLM uses 2 cores instead of all 8 |
 
-Setting 6 on an 8-core CPU leaves 2 cores free so the operating system,
-audio, and GUI don't compete with the AI.
+On an 8-core laptop, 2 threads per model leaves 6 cores free for the OS,
+audio drivers, and GUI, preventing audio crackling and UI freezes.
+
+## Optional: CPU frequency governor (Linux only)
+
+If your laptop overheats during model loading (fans go crazy), you can pin
+the CPU to a lower speed with these commands **before** launching Copycat:
+
+```bash
+for i in {0..7}; do
+  sudo cpufreq-set -c $i -u 2.00GHz -g conservative
+done
+```
+
+After Copycat finishes loading, restore normal speed:
+
+```bash
+for i in {0..7}; do
+  sudo cpufreq-set -c $i -g schedutil
+done
+```
+
+This is **optional** — Copycat doesn't touch your CPU governor settings.
+You need `cpufrequtils` installed (`sudo apt install cpufrequtils`) and
+passwordless `sudo` for the commands above.
 
 ---
 
-## Useful searches to find alternatives yourself
+---
+
+## How the memory (vector DB) learns new things without starting over
+
+Imagine you have a **giant box of Lego bricks** that represents everything
+you know (your journal).  To answer questions, the program turns every
+paragraph into a special number-code (a *vector*) and stores it in a
+second box called ChromaDB.
+
+**Before (old way — slow):** Every time you added ONE new page to your
+diary, the program would:
+1. Dump ALL the Lego bricks on the floor.
+2. Turn EVERY page into number-codes again.
+3. Put everything back in the box.
+
+Even if you only added one sentence, it re-read all 100 pages.
+That's like re-packing your whole suitcase because you added one sock.
+
+**Now (new way — fast):** The program keeps a **cheat-sheet** that says
+*"this page → this code"* for every page (it's a tiny file called
+``.file_hashes.json``).  When you start the program:
+
+1. It looks at each page of your diary and checks its cheat-sheet.
+2. If the page is **new**: it turns only that page into number-codes
+   and adds it.  *(Like adding that one sock to the suitcase.)*
+3. If the page **changed**: it throws away the old codes for *that page*
+   and does it again.  *(Like taking the old sock out and putting a
+   new one in.)*
+4. If the page is **exactly the same**: it does nothing — skip!
+   *(You don't even open the suitcase.)*
+5. If a page **disappeared**: it throws away its codes.  *(Like taking
+   a sock out.)*
+
+**The cheat-sheet trick works because of maths:** each page's content
+is turned into a short fingerprint (an MD5 hash — a 32-character code
+like ``"a1b2c3..."``).  If the content changes *even by one letter*,
+the fingerprint changes.  So the program knows instantly whether a page
+is new, modified, or the same, without reading the whole book.
+
+---
+
+## Does incremental make it slower?
+
+**No — it makes it faster, and never slower.**  Here's why:
+
+- If you **didn't change anything**: the program checks fingerprints
+  (takes 0.01 seconds) and says "all good".  Same speed as before.
+- If you **added one file**: the program fingerprints all files
+  (0.1 seconds for 100 files), finds the one new one, and processes
+  *only that one*.  Much faster than rebuilding everything.
+- If you **changed every file**: it does the same work as the old way,
+  plus 0.1 seconds of fingerprint checking.  **Negligible overhead.**
+
+The fingerprint check is like glancing at a book's cover to see if
+it's the same book — it doesn't read the whole book.
+
+**In short: incremental is always better.**  The more files you have,
+the bigger the savings when you only add a few.
+
+---
 
 | You need | Search on Google |
 |----------|-----------------|
@@ -112,6 +195,49 @@ audio, and GUI don't compete with the AI.
 | Lip-sync with photo | "sadTalker vs wav2Lip CPU speed comparison" |
 | Vector database | "chromaDB vs FAISS comparison 2025" |
 | Small fast local LLM | "best small LLM ollama CPU 2025 reddit" |
+
+---
+
+## Why everything slows down when the memory (journal) grows
+
+This is the most important thing to understand about Copycat:
+
+**The RAG search itself does NOT get slower as the journal grows.**
+ChromaDB uses approximate nearest-neighbour search — it finds the
+top-3 matches out of a million documents in the same time it takes
+to find them out of 10 documents.  Cost: O(log N) or better.
+
+**What gets slower is the LLM (Ollama).**  When the RAG returns more
+context (more diary pages), the LLM prompt gets longer.  A longer
+prompt means:
+- More RAM to hold the prompt in memory
+- More tokens for the LLM to "read" before generating a reply
+- Longer time-to-first-token
+
+Before the fix, the code retrieved **6 chunks** of up to 800
+characters each = **4800 characters** of context, with no upper limit.
+Over time, as you add more chat history, that context keeps growing.
+
+---
+
+## What we changed (the optimisations)
+
+| Tweak | Before | After | Why |
+|-------|--------|-------|-----|
+| **RAG chunks (k)** | 6 chunks | 3 chunks | Half the context for the LLM = half the prompt size |
+| **Context cap** | Unlimited | 2000 characters | Hard stop so the prompt never bloat |
+| **LLM threads** | All 8 cores (default) | 2 threads | Stops the LLM from stealing every CPU core |
+| **Prompt wording** | 150+ words | ~50 words | Every word in the prompt costs tokens |
+| **Thread limits** | Rag set 4, Wav2Lip set 6, others 2 — fighting each other | All set to 2 globally | No more core-juggling between models |
+
+**Result:** The LLM now generates a reply in about half the time
+because it has less text to read and doesn't have to fight 7 other
+threads for CPU time.  Memory usage drops because the prompt is
+smaller.
+
+---
+
+## The golden rule
 
 The golden rule: always search `"X vs Y CPU benchmark 2025"`
 and check how much RAM each one needs. With 14 GB you can't run two models
