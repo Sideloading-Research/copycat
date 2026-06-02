@@ -6,7 +6,7 @@ customtkinter>=5.2.0
 pillow>=10.0.0
 sounddevice>=0.4.6
 soundfile>=0.12.1
-numpy>=1.24.0,<2.0.0
+numpy>=1.24.0
 opencv-python-headless>=4.8.0
 openai-whisper>=20231117
 ollama>=0.2.0
@@ -31,4 +31,3 @@ scipy>=1.11.0
 tqdm>=4.60.0
 torchcodec
 langchain-core~=1.4.0
-torch~=2.12.0+cpu
