@@ -23,7 +23,7 @@ Usage
 """
 
 import socket
-import time
+import time as _time
 from datetime import datetime
 from pathlib import Path
 
@@ -63,7 +63,7 @@ def has_internet(force_refresh=False) -> bool:
     hammering the network on every pipeline invocation.
     """
     global _internet_available, _last_internet_check
-    now = time.time()
+    now = _time.time()
     if (
         not force_refresh
         and _internet_available is not None
@@ -102,7 +102,6 @@ def _get_local_timezone() -> str:
         except (OSError, ValueError):
             pass
 
-    import time as _time
     return _time.tzname[0] or "Unknown"
 
 
@@ -151,7 +150,7 @@ def get_location(force_refresh=False) -> dict:
         (``"geo-ip"`` or ``"system-clock"``).
     """
     global _geo_cache, _last_geo_fetch
-    now = time.time()
+    now = _time.time()
 
     if (
         not force_refresh
@@ -190,7 +189,7 @@ def get_context_string(lang="en") -> str:
     """Return a structured, LLM-friendly description of the current
     time, date, day of week, and best-known location.
 
-    The output is formatted as labelled fields so the model can easily
+    The output is formatted as labeled fields so the model can easily
     parse and use each piece of information.
 
     Examples
@@ -233,7 +232,6 @@ def get_context_string(lang="en") -> str:
 
 def _tz_abbreviation() -> str:
     """Return the local timezone abbreviation (e.g. ``CEST``, ``EST``)."""
-    import time as _time
     return _time.tzname[_time.daylight if _time.daylight else 0]
 
 

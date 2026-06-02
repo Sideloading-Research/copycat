@@ -1,41 +1,72 @@
-"""Core pipeline: STT → RAG → LLM → TTS → lip-sync."""
+"""Refactored CopycatEngine — dependency-injected pipeline coordinator.
 
-import datetime
-import json
-import os
-import re
-import subprocess
-import sys
-import time
-import ollama
-import whisper
-from src.core.rag import RAGManager
-from src.core.location import get_context_string, has_internet
+Keeps the same public API so ``main.py`` and ``main_window.py``
+require minimal changes, but internally delegates to:
+
+- ``core.stt.whisper_backend.WhisperSTT``
+- ``core.llm.ollama_backend.OllamaLLM``
+- ``core.tts.xtts_backend.XTTSBackend``
+- ``core.vector_db.chroma_backend.ChromaVectorDB``
+- ``core.lipsync.wav2lip_backend.Wav2LipBackend``
+- ``orchestrator.pipeline.PipelineOrchestrator``
+- ``orchestrator.prompt_builder.PromptBuilder``
+- ``orchestrator.name_detector.NameDetector``
+- ``orchestrator.session_logger.SessionLogger``
+"""
+
+from src.config import cfg
 from src.utils.paths import PATHS
+from src.core.stt.whisper_backend import WhisperSTT
+from src.core.llm.ollama_backend import OllamaLLM
+from src.core.tts.xtts_backend import XTTSBackend
+from src.core.vector_db.chroma_backend import ChromaVectorDB
+from src.core.lipsync.wav2lip_backend import Wav2LipBackend
+from src.orchestrator.pipeline import PipelineOrchestrator
+from src.orchestrator.prompt_builder import PromptBuilder
+from src.orchestrator.name_detector import NameDetector
+from src.orchestrator.session_logger import SessionLogger
 
 
 class CopycatEngine:
-    """Orchestrates the full avatar pipeline.
+    """Facade that wires backends together and exposes the same
+    public API as the original monolithic engine.
 
-    1. Speech-to-text via Whisper (or accept manual text).
-    2. Retrieve relevant memories from the vector DB (RAG).
-    3. Generate a reply with Ollama + a local LLM.
-    4. Clone voice via XTTS v2 (TTS).
-    5. Sync lips on a face image via Wav2Lip.
+    Usage::
+
+        engine = CopycatEngine()
+        engine.load_models()
+        engine.run_pipeline("es", manual_text="Hola")
     """
 
     def __init__(self):
-        self.whisper_m = None
-        self.tts_manager = None
-        self.persona_name = None  # Inferred from user speech (e.g. "Marco").
-        self.rag = RAGManager(
-            journal_path=PATHS["journal"],
-            db_path=PATHS["vector_db"],
-            model_name="sentence-transformers/all-MiniLM-L6-v2",
+        self.persona_name: str | None = None
+
+        # Instantiate backends (all CPU-optimised defaults from config).
+        self._stt = WhisperSTT()
+        self._llm = OllamaLLM()
+        self._tts = XTTSBackend()
+        self._vdb = ChromaVectorDB()
+        self._lipsync = Wav2LipBackend()
+        self._prompt_builder = PromptBuilder()
+        self._name_detector = NameDetector()
+        self._logger = SessionLogger()
+
+        self._orchestrator = PipelineOrchestrator(
+            stt=self._stt,
+            llm=self._llm,
+            tts=self._tts,
+            vector_db=self._vdb,
+            lipsync=self._lipsync,
+            prompt_builder=self._prompt_builder,
+            name_detector=self._name_detector,
+            logger=self._logger,
         )
 
-    def check_assets(self):
-        """Return (has_critical_misses, details_dict) for startup validation."""
+    # ── asset check ─────────────────────────────────────────────
+
+    @staticmethod
+    def check_assets():
+        """Return ``(has_critical_misses, details_dict)`` for startup validation."""
         missing = {
             "face": not PATHS["face_img"].exists(),
             "voices": not any(PATHS["journal"].parent.glob("voices/*.wav")),
@@ -44,279 +75,64 @@ class CopycatEngine:
         is_critical = missing["face"] or missing["voices"] or missing["journal"]
         return is_critical, missing
 
+    # ── model loading ────────────────────────────────────────────
+
     def load_models(self):
-        """Load Whisper, initialise RAG, and boot XTTS v2."""
+        """Load Whisper, initialise ChromaDB, boot XTTS v2.
+
+        This method exists to preserve the old API used by ``main.py``.
+        """
         try:
             self._sync_behavior_to_journal()
-            self.whisper_m = whisper.load_model("tiny")
-            self.rag.initialize()
-
-            from src.core.tts_manager import TTSManager
-
-            self.tts_manager = TTSManager(PATHS["voices_dir"])
-
+            self._stt.load_model()
+            self._vdb.initialize()
+            self._tts.load_model()
             print("All models loaded successfully.")
         except Exception as e:
             print(f"Critical model load error: {e}")
 
-    # ── behaviour sync to journal ────────────────────────────────
+    # ── behaviour sync ──────────────────────────────────────────
 
-    def _sync_behavior_to_journal(self):
-        """Copy ``behavior.txt`` → ``journal/00_behavior.md`` so it is
-        indexed by RAG and always retrievable via ``search_priority``."""
+    @staticmethod
+    def _sync_behavior_to_journal():
+        """Copy ``behavior.txt`` → ``journal/00_behavior.md`` for RAG indexing."""
         behavior_file = PATHS["behavior"]
         if not behavior_file.exists():
             print("No behavior.txt found — skipping sync.")
             return
         content = behavior_file.read_text(encoding="utf-8")
-        # Wrap in markdown so the LLM can distinguish it from diary entries.
         wrapped = "# Personality Profile\n\n" + content.strip()
         dest = PATHS["journal"] / "00_behavior.md"
         dest.write_text(wrapped, encoding="utf-8")
         print(f"Behaviour synced → {dest}")
 
-    # ── chat log ─────────────────────────────────────────────────
+    # ── main pipeline ───────────────────────────────────────────
 
-    def _save_chat_log(self, stats: dict):
-        """Append one JSON line to ``data/logs/chats.jsonl``."""
-        log_file = PATHS["logs_dir"] / "chats.jsonl"
-        with open(log_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps(stats, ensure_ascii=False) + "\n")
+    def run_pipeline(self, lang, manual_text=None, mic_enabled=True, status_cb=None, chat_cb=None):
+        """Execute the full STT → RAG → LLM → TTS → lip-sync pipeline.
 
-    # ── name detection ───────────────────────────────────────────
+        When *mic_enabled* is ``False`` the TTS and lip-sync steps are
+        skipped entirely to avoid unnecessary computation.
 
-    def _detect_name(self, text):
-        """Try to extract a person's name from *text* via regex patterns."""
-        patterns = [
-            r"(?:me\s+)?llamo\s+(\w+)",
-            r"my name is (\w+)",
-            r"(?:soy|sou)\s+(\w+)",
-            r"call me (\w+)",
-            r"(?:i'm|i am)\s+(\w+)",
-        ]
-        for pattern in patterns:
-            m = re.search(pattern, text.lower().strip())
-            if m:
-                return m.group(1).capitalize()
-        return None
-
-    # ISO 639-1 language code -> English name.
-    # Only codes matching a voice file in data/voices/ are used at runtime.
-    _ALL_LANGS: dict[str, str] = {
-        "en": "English", "es": "Spanish", "fr": "French",
-        "de": "German", "it": "Italian", "pt": "Portuguese",
-        "nl": "Dutch", "ru": "Russian", "ja": "Japanese",
-        "ko": "Korean", "zh": "Chinese", "ar": "Arabic",
-        "hi": "Hindi", "tr": "Turkish", "pl": "Polish",
-        "sv": "Swedish", "da": "Danish", "fi": "Finnish",
-        "cs": "Czech", "hu": "Hungarian", "ro": "Romanian",
-        "el": "Greek", "he": "Hebrew", "th": "Thai",
-        "vi": "Vietnamese", "id": "Indonesian", "ms": "Malay",
-        "uk": "Ukrainian", "ca": "Catalan", "gl": "Galician",
-        "eu": "Basque", "bn": "Bengali", "ta": "Tamil",
-        "te": "Telugu", "mr": "Marathi", "gu": "Gujarati",
-    }
-
-    # ── prompt building ──────────────────────────────────────────
-
-    def _available_lang_map(self) -> dict[str, str]:
-        """Return ``{code: name}`` only for languages that have a
-        matching ``.wav`` file in ``data/voices/``."""
-        codes = {p.stem for p in PATHS["voices_dir"].glob("*.wav")}
-        return {k: v for k, v in self._ALL_LANGS.items() if k in codes}
-
-    def _build_persona_prompt(
-        self, behavior, context, user_text, output_lang,
-        user_lang=None, context_info="",
-    ):
-        """Construct the LLM prompt that makes the model impersonate the user."""
-        name = self.persona_name or "the person you are simulating"
-        lang_map = self._available_lang_map()
-        out_lang = lang_map.get(output_lang, output_lang)
-        lang_note = f" (spoken in {lang_map.get(user_lang, user_lang)})" if user_lang else ""
-        now_block = (
-            f"\n## Current situation\n"
-            f"{context_info}"
-        ) if context_info else ""
-        rules = (
-            f"\n## Rules\n"
-            f"- Never mention AI, language model, or programming.\n"
-            f"- Reply in {out_lang}.\n"
-            f"- Keep it under 40 words.\n"
-            f"- Be natural and conversational."
-        )
-        return (
-            f"You are {name}.\n"
-            f"Personality: {behavior}\n"
-            f"Memories: {context}\n"
-            f"{now_block}\n"
-            f"{rules}\n"
-            f"User{lang_note}: {user_text}\n"
-            f"{name}:"
-        )
-
-    # ── temp file helpers ────────────────────────────────────────
-
-    def _cleanup_temp(self):
-        """Delete output temp files from a previous pipeline run.
-
-        ``tmp_user`` is deliberately kept — it is the *input* recorded
-        before this method runs.
+        Returns ``True`` on success, ``False`` on error.
         """
-        for f in [PATHS["tmp_bot"], PATHS["tmp_video"]]:
-            if f.exists():
-                f.unlink(missing_ok=True)
+        # Sync persona_name so the orchestrator picks it up.
+        self._orchestrator.persona_name = self.persona_name
 
-    # ── main pipeline ────────────────────────────────────────────
-
-    def run_pipeline(self, lang, manual_text=None, status_cb=None, chat_cb=None):
-        """Execute the full STT→RAG→LLM→TTS→lip-sync pipeline."""
-        t_start = time.time()
-        stats = {
-            "timestamp": datetime.datetime.now().isoformat(),
-            "lang": lang,
-            "n_inferences": 0,
-        }
-        try:
-            self._cleanup_temp()
-            user_lang = None
-
-            if manual_text:
-                user_text = manual_text
-            else:
-                if status_cb:
-                    status_cb("Transcribing voice...", "#e65100")
-                result = self.whisper_m.transcribe(
-                    str(PATHS["tmp_user"]), fp16=False
-                )
-                user_text = result["text"].strip()
-                user_lang = result.get("language")
-                stats["n_inferences"] += 1
-                if chat_cb:
-                    chat_cb("user", user_text)
-
-            if not user_text:
-                return False
-
-            detected = self._detect_name(user_text)
-            if detected:
-                self.persona_name = detected
-                if chat_cb:
-                    chat_cb("system", f"[Persona set to {detected}]")
-
-            if status_cb:
-                status_cb("Searching memory...", "#0277bd")
-            t_rag = time.time()
-            context = self.rag.search_priority(
-                user_text, priority_source="00_behavior.md",
-                k=3, max_chars=3000,
-            )
-            stats["tt_rag_ms"] = int((time.time() - t_rag) * 1000)
-            stats["n_chunks"] = 3
-            stats["n_inferences"] += 1
-
-            behavior = ""
-            if PATHS["behavior"].exists():
-                behavior = PATHS["behavior"].read_text(encoding="utf-8")
-                MAX_BEHAVIOR_SUMMARY = 500
-                if len(behavior) > MAX_BEHAVIOR_SUMMARY:
-                    behavior = behavior[:MAX_BEHAVIOR_SUMMARY] + "\n...[summary]"
-
-            if status_cb:
-                status_cb("Thinking...", "#e65100")
-
-            context_info = get_context_string(lang=lang)
-            prompt = self._build_persona_prompt(
-                behavior, context, user_text, lang, user_lang,
-                context_info=context_info,
-            )
-            t_llm = time.time()
-            resp = ollama.generate(
-                model="gemma3:4b", prompt=prompt,
-                options={"num_thread": 2},
-            )
-            stats["tt_llm_ms"] = int((time.time() - t_llm) * 1000)
-            stats["n_inferences"] += 1
-            bot_text = resp["response"].strip()
-
-            if chat_cb:
-                chat_cb("bot", bot_text)
-
-            if status_cb:
-                status_cb("Cloning voice...", "#2e7d32")
-            t_tts = time.time()
-            self.tts_manager.generate_tts(bot_text, lang, str(PATHS["tmp_bot"]))
-            stats["tt_tts_ms"] = int((time.time() - t_tts) * 1000)
-            stats["n_inferences"] += 1
-
-            if status_cb:
-                status_cb("Syncing lips...", "#2e7d32")
-            t_lip = time.time()
-            self._sync_lips()
-            stats["tt_lipsync_ms"] = int((time.time() - t_lip) * 1000)
-            stats["n_inferences"] += 1
-
-            stats["input_text"] = user_text
-            stats["output_text"] = bot_text
-            stats["tt_total_ms"] = int((time.time() - t_start) * 1000)
-            stats["internet"] = has_internet()
-            stats["context_info"] = context_info
-            self._save_chat_log(stats)
-
-            if status_cb:
-                status_cb("Ready", "#2e7d32")
-            return True
-
-        except Exception as e:
-            error_msg = f"Pipeline Error: {str(e)}"
-            if chat_cb:
-                chat_cb("system", error_msg)
-            if status_cb:
-                status_cb("Error", "#c62828")
-            print(error_msg)
-            return False
-
-    # ── lip-sync ────────────────────────────────────────────────
-
-    def _sync_lips(self):
-        """Run Wav2Lip inference to overlay synchronised lips on the face image."""
-        cmd = (
-            f"{sys.executable} {PATHS['wav2lip_script']} "
-            f"--checkpoint_path {PATHS['wav2lip_pth']} "
-            f"--face {PATHS['face_img']} "
-            f"--audio {PATHS['tmp_bot']} "
-            f"--outfile {PATHS['tmp_video']} --nosmooth"
-        )
-        subprocess.run(
-            cmd,
-            shell=True,
-            check=True,
-            env={**os.environ, "OMP_NUM_THREADS": "6"},
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.STDOUT,
+        result = self._orchestrator.run_turn(
+            lang=lang,
+            manual_text=manual_text,
+            mic_enabled=mic_enabled,
+            status_cb=status_cb,
+            chat_cb=chat_cb,
         )
 
-    # ── session persistence ──────────────────────────────────────
+        # Sync back.
+        self.persona_name = self._orchestrator.persona_name
+        return result
+
+    # ── session persistence ─────────────────────────────────────
 
     def save_session_log(self, history_list):
         """Write the full chat log to a timestamped markdown file."""
-        if not history_list:
-            return
-
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"chatlog-{timestamp}.md"
-        filepath = PATHS["journal"] / filename
-
-        try:
-            with open(filepath, "w", encoding="utf-8") as f:
-                f.write(
-                    f"# Chat Session Log - "
-                    f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n"
-                )
-                for entry in history_list:
-                    role = entry["role"].upper()
-                    content = entry["content"]
-                    f.write(f"**{role}**: {content}\n\n")
-            print(f"Session saved to {filepath}")
-        except Exception as e:
-            print(f"Error saving session: {e}")
+        self._logger.save_session(history_list)

@@ -2,29 +2,27 @@
 
 Importing this module performs one-time setup:
 - Suppresses noisy library warnings.
-- Limits OpenMP / MKL threads to prevent CPU oversubscription.
+- Limits OpenMP / MKL threads (values from ``config.py``).
 - Patches ``torch.load`` for compatibility with legacy weight files.
 """
 
 import os
 import warnings
 import torch
+from src.config import cfg
 
 warnings.filterwarnings("ignore", message=".*resume_download.*")
 warnings.filterwarnings("ignore", message=".*FutureWarning.*")
 
-# ── Thread limits (2 instead of 8 to avoid thermal throttling) ──
-os.environ.setdefault("OMP_NUM_THREADS", "2")
-os.environ.setdefault("MKL_NUM_THREADS", "2")
-os.environ.setdefault("OPENBLAS_NUM_THREADS", "2")
-os.environ.setdefault("KMP_BLOCKTIME", "0")
-os.environ.setdefault("KMP_AFFINITY", "granularity=fine,compact,1,0")
-os.environ.setdefault("OLLAMA_NUM_THREADS", "2")
+# Thread limits — read from centralised config.
+os.environ.setdefault("OMP_NUM_THREADS", cfg.omp_num_threads)
+os.environ.setdefault("MKL_NUM_THREADS", cfg.mkl_num_threads)
+os.environ.setdefault("OPENBLAS_NUM_THREADS", cfg.openblas_num_threads)
+os.environ.setdefault("KMP_BLOCKTIME", cfg.kmp_blocktime)
+os.environ.setdefault("KMP_AFFINITY", cfg.kmp_affinity)
+os.environ.setdefault("OLLAMA_NUM_THREADS", cfg.ollama_num_threads)
 
-# ── Torch 2.6+ compatibility patch ──
-# PyTorch 2.6 introduced ``weights_only=True`` as default, which rejects
-# legacy pickle formats used by older XTTS / Wav2Lip checkpoints.  This
-# monkey-patch forces ``weights_only=False`` so those checkpoints load.
+# Torch 2.6+ compat: legacy checkpoints need ``weights_only=False``.
 _orig_load = torch.load
 
 

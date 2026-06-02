@@ -1,35 +1,37 @@
-"""Main application window — chat panel, avatar, and voice controls."""
+"""Main application window — pure View layer.
 
+Layout: chat transcript (left) + avatar + controls (right).
+All logic is delegated to ``PipelineController``.
+"""
+
+import threading
 import customtkinter as ctk
 import tkinter as tk
 import cv2
-import threading
 import os
 import numpy as np
 from PIL import Image, ImageTk
-from src.core.engine import CopycatEngine
-from src.core.audio import AudioHandler
+from src.ui.controller import PipelineController
 from src.utils.paths import PATHS
 
 # Status-bar colour palette.
-C_IDLE, C_ACTIVE, C_OK, C_WARN, C_ERR, C_INFO, C_MIC_OFF = (
-    "#1f538d",
-    "#b71c1c",
-    "#2e7d32",
-    "#e65100",
-    "#c62828",
-    "#0277bd",
-    "#0d2b5c",
-)
+C_IDLE = "#1f538d"
+C_ACTIVE = "#b71c1c"
+C_OK = "#2e7d32"
+C_WARN = "#e65100"
+C_ERR = "#c62828"
+C_INFO = "#0277bd"
+C_MIC_OFF = "#0d2b5c"
 
 
 class MainWindow(ctk.CTk):
     """Single-window GUI for Copycat.
 
-    Layout: chat transcript (left) + avatar + controls (right).
+    This is a **View only**.  All user actions are forwarded to
+    ``PipelineController`` which owns the engine and audio.
     """
 
-    def __init__(self, engine=None, auto_init=True):
+    def __init__(self, auto_init=True):
         super().__init__()
         self.title("Copycat - Local AI Avatar")
         self.geometry("1000x750")
@@ -39,10 +41,12 @@ class MainWindow(ctk.CTk):
         if icon_path and icon_path.exists():
             icon_img = ImageTk.PhotoImage(file=str(icon_path))
             self.wm_iconphoto(True, icon_img)
+
         self.lang_var = ctk.StringVar(value="en")
         self.full_session_log: list[dict] = []
-        self.engine = engine or CopycatEngine()
-        self.audio = AudioHandler()
+
+        # Controller owns engine + audio.
+        self.controller = PipelineController()
         self.recording = False
         self.mic_enabled = True
 
@@ -51,39 +55,23 @@ class MainWindow(ctk.CTk):
 
         self.protocol("WM_DELETE_WINDOW", self._on_closing)
 
-        if engine:
-            # Engine provided externally — just refresh the voice list.
-            self.after(0, self._refresh_languages)
-            self._update_status("System Ready", C_OK)
-        elif auto_init:
-            # No engine yet; load models in background.
-            threading.Thread(target=self._init_engine, daemon=True).start()
+        if auto_init:
+            self.controller.load_models_async(
+                on_ready=self._on_engine_ready,
+                status_cb=self._update_status,
+            )
 
     # ── lifecycle ────────────────────────────────────────────────
 
     def _on_closing(self):
-        """Save the session log before exiting."""
         self._update_status("Saving session...", C_INFO)
         if self.full_session_log:
-            self.engine.save_session_log(self.full_session_log)
+            self.controller.save_session(self.full_session_log)
         self.destroy()
 
-    def _init_engine(self):
-        """Background initialiser when no engine was passed."""
-        try:
-            self._update_status("Initialising Folders...", C_INFO)
-            PATHS["vector_db"].mkdir(parents=True, exist_ok=True)
-            PATHS["journal"].mkdir(parents=True, exist_ok=True)
-            PATHS["voices_dir"].mkdir(parents=True, exist_ok=True)
-
-            self._update_status("Loading AI Models...", C_WARN)
-            self.engine.load_models()
-
-            self.after(0, self._refresh_languages)
-            self._update_status("System Ready", C_OK)
-        except Exception as e:
-            print(f"Critical initialisation error: {e}")
-            self._update_status("Engine Error", C_ERR)
+    def _on_engine_ready(self):
+        self.after(0, self._refresh_languages)
+        self._update_status("System Ready", C_OK)
 
     # ── UI construction ──────────────────────────────────────────
 
@@ -94,9 +82,7 @@ class MainWindow(ctk.CTk):
 
         # ── left: chat panel ─────────────────────────────────────
         self.chat_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.chat_frame.grid(
-            row=0, column=0, sticky="nsew", padx=20, pady=20
-        )
+        self.chat_frame.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
         self.chat_frame.grid_rowconfigure(0, weight=1)
         self.chat_frame.grid_columnconfigure(0, weight=1)
 
@@ -123,9 +109,7 @@ class MainWindow(ctk.CTk):
 
         # ── right: avatar + controls ─────────────────────────────
         self.right_frame = ctk.CTkFrame(self, width=380)
-        self.right_frame.grid(
-            row=0, column=1, sticky="ns", padx=20, pady=20
-        )
+        self.right_frame.grid(row=0, column=1, sticky="ns", padx=20, pady=20)
         self.right_frame.grid_propagate(False)
 
         self.lbl_avatar = tk.Label(self.right_frame, bg="#121212")
@@ -214,6 +198,8 @@ class MainWindow(ctk.CTk):
 
     def _update_status(self, text, color="#FFFFFF"):
         """Thread-safe status-bar update."""
+        if not self.mic_enabled and text in ("Transcribing voice...", "Syncing lips..."):
+            return
         self.after(0, lambda: self.lbl_status.configure(text=text, text_color=color))
 
     def _load_avatar_static(self):
@@ -254,118 +240,56 @@ class MainWindow(ctk.CTk):
         _next()
 
     # ── input handling ───────────────────────────────────────────
-    #
-    # Two input modes:
-    #   1. Text entry  — user types + presses Enter or clicks "Send".
-    #   2. Voice       — user presses the microphone button, speaks,
-    #                    presses again to stop and process.
-    #
-    # The microphone toggle (speaker icon) acts as a master cut-off
-    # for ALL audio I/O: when disabled, both recording and playback
-    # (including lip-sync animation) are skipped.  Text input still
-    # works so the user can chat without voice.
-    # ─────────────────────────────────────────────────────────────
 
     def _on_enter_key(self, event):
-        """Submit the text entry when the user presses the Enter key.
-
-        Returns ``"break"`` so the event is consumed by this handler
-        and not propagated further by Tkinter's internal bindings.
-        """
         self._send_text_manual()
         return "break"
 
     def _send_text_manual(self):
-        """Read the text entry, append to chat, and fire the pipeline.
-
-        The pipeline runs on a daemon thread so the UI stays responsive.
-        """
         msg = self.entry_text.get().strip()
         if msg:
             self.entry_text.delete(0, "end")
-            self._append_to_chat("user", msg)
-            lang = self.lang_var.get()
-            threading.Thread(
-                target=self._process_pipeline, args=(lang, msg), daemon=True
-            ).start()
+            self.controller.process_text(
+                msg,
+                self.lang_var.get(),
+                chat_cb=self._append_to_chat,
+                status_cb=self._update_status,
+                on_complete=self._on_pipeline_complete,
+            )
 
     def _toggle_mic(self):
-        """Toggle the master audio cut-off on/off.
-
-        When *off*:
-        - The microphone button turns dark blue and is ignored.
-        - Any ongoing recording is stopped immediately.
-        - Pipeline output will still compute text but **skip**
-          audio playback and lip-sync animation (see
-          ``_process_pipeline``).
-
-        When *on*:
-        - The microphone button reverts to its normal idle colour.
-        - Voice recording and audio/video output work normally.
-        """
-        self.mic_enabled = not self.mic_enabled
+        self.mic_enabled = self.controller.toggle_mic(status_cb=self._update_status)
         if self.mic_enabled:
-            # Restore normal colours and unmuted icon.
             self.btn_mic_toggle.configure(fg_color=C_OK, text="\U0001f50a")
             self.btn_mic.configure(fg_color=C_IDLE)
-            self._update_status("Microphone enabled", C_OK)
         else:
-            # Dark blue + muted icon to indicate disabled state.
             self.btn_mic_toggle.configure(fg_color=C_MIC_OFF, text="\U0001f507")
             self.btn_mic.configure(fg_color=C_MIC_OFF)
-            # If a recording was in progress, abort it immediately.
-            if self.recording:
-                self.recording = False
-                self.audio.stop_recording(str(PATHS["tmp_user"]))
-            self._update_status("Microphone disabled — audio I/O cut", C_ERR)
 
     def _toggle_voice_interaction(self):
-        """Start / stop a voice recording session.
-
-        This is the handler for the large microphone button.
-        If the master audio cut-off (``self.mic_enabled``) is
-        ``False`` the request is rejected with a warning.
-        """
         if not self.mic_enabled:
             self._update_status("Microphone is disabled", C_ERR)
             return
         lang = self.lang_var.get()
         if not self.recording:
-            # Start capturing from the mic.
             self.recording = True
             self.btn_mic.configure(fg_color=C_ACTIVE)
-            self._update_status(f"Listening ({lang})...", C_ACTIVE)
-            self.audio.start_recording()
+            self.controller.start_recording(lang, status_cb=self._update_status)
         else:
-            # Stop recording and process the captured audio.
             self.recording = False
             self.btn_mic.configure(fg_color=C_IDLE)
-            self.audio.stop_recording(str(PATHS["tmp_user"]))
-            self._update_status("Processing voice...", C_INFO)
-            threading.Thread(
-                target=self._process_pipeline, args=(lang, None), daemon=True
-            ).start()
+            self.controller.stop_recording(
+                lang,
+                status_cb=self._update_status,
+                chat_cb=self._append_to_chat,
+                on_complete=self._on_pipeline_complete,
+            )
 
-    def _process_pipeline(self, lang, manual_text):
-        """Run the engine pipeline, then play the result.
-
-        If ``self.mic_enabled`` is ``False`` the audio + lip-sync
-        output stage is skipped entirely — the bot still produces
-        text in the chat but remains visually silent.  This allows
-        the user to interact via text alone without unwanted voice
-        or animation.
-        """
-        success = self.engine.run_pipeline(
-            lang,
-            manual_text=manual_text,
-            status_cb=self._update_status,
-            chat_cb=self._append_to_chat,
-        )
+    def _on_pipeline_complete(self, success: bool):
+        """Called when pipeline finishes. Plays audio/video if successful and mic enabled."""
         if success and self.mic_enabled:
-            # Play audio on a background thread; video loops on the
-            # main thread via ``after()`` callbacks.
             threading.Thread(
-                target=self.audio.play_audio,
+                target=self.controller.audio.play_audio,
                 args=(str(PATHS["tmp_bot"]),),
                 daemon=True,
             ).start()
@@ -373,5 +297,4 @@ class MainWindow(ctk.CTk):
 
     def _open_settings(self):
         from src.ui.settings import configuration
-
         configuration(on_complete_callback=self._refresh_languages)
