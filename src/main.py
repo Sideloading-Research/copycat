@@ -16,7 +16,7 @@ from src.ui.main_window import MainWindow, C_OK, C_ERR
 
 
 def _load_all_models(splash, app):
-    """Load everything during splash so UI appears only when ready.
+    """Load everything during splash so the UI appears only when ready.
 
     Wrapped in try/except so a model failure does not leave the
     splash screen stuck forever.
@@ -101,7 +101,7 @@ def _reveal(app):
     """Hand-off from splash to main UI.
 
     When no critical data files exist yet (first run after a fresh
-    clone) the settings / configuration dialog is shown first so the
+    clone), the settings / configuration dialog is shown first so the
     user can upload a face, a voice sample, and journal files before
     the main window appears.
     """

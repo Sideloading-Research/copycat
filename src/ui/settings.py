@@ -14,7 +14,7 @@ def configuration(on_complete_callback=None):
     - Upload a face image.
     - Upload a base voice clip.
     - Import .md journal files.
-    - Edit the behaviour prompt.
+    - Edit the behavior prompt.
     - Save and close (triggers ``on_complete_callback``).
     """
     window = ctk.CTkToplevel()

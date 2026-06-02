@@ -1,6 +1,6 @@
 """Standalone replacements for langchain_community.document_loaders.
 
-langchain-community was sunset on 2026-05-26.
+langchain-community was sunset in 2026-05-26.
 These thin wrappers keep DirectoryLoader + TextLoader working
 without depending on an unmaintained package.
 """

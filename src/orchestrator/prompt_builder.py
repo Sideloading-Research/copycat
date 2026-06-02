@@ -1,4 +1,4 @@
-"""PromptBuilder — constructs the LLM prompt from behaviour, RAG context, time, and rules."""
+"""PromptBuilder — constructs the LLM prompt from behavior, RAG context, time, and rules."""
 
 from src.config import cfg
 

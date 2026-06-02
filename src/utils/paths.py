@@ -21,7 +21,7 @@ JOURNAL = DATA / "journal"
 VOICES = DATA / "voices"
 # Chroma vector database (persisted on disk).
 CHROMA_DB = DATA / "vector_db"
-# Behaviour/personality prompt (free-form text).
+# Behavior/personality prompt (free-form text).
 BEHAVIOR_FILE = DATA / "behavior" / "behavior.txt"
 
 # Per-chat execution logs (appended on every pipeline run).

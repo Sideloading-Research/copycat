@@ -19,6 +19,8 @@ venv/
 # data/voices/
 
 # Temp files
+temp/
+*.avi
 tmp/
 _temp_*
 _tmp_*
@@ -33,3 +35,4 @@ _tmp_*
 *.mkv
 *.gif
 *.webm
+conclusion.txt

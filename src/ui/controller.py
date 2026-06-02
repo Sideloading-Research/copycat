@@ -1,6 +1,6 @@
 """PipelineController — handles UI events and orchestrates pipeline threads.
 
-Separated from ``MainWindow`` so the same controller can be reused
+Separated from ``MainWindow``, so the same controller can be reused
 from a CLI, a web API, or any other frontend.
 """
 
@@ -85,7 +85,7 @@ class PipelineController:
             status_cb(f"Listening ({lang})...", "#b71c1c")
 
     def stop_recording(self, lang: str, status_cb=None, chat_cb=None, on_complete=None):
-        """Stop microphone and process the captured audio."""
+        """Stop the microphone and process the captured audio."""
         self.recording = False
         self.audio.stop_recording(str(PATHS["tmp_user"]))
         if status_cb:
@@ -97,7 +97,7 @@ class PipelineController:
         ).start()
 
     def toggle_mic(self, status_cb=None):
-        """Toggle the master audio cut-off on/off.
+        """Toggle the primary audio cut-off on/off.
 
         Returns the new state (``True`` = enabled).
         """
