@@ -80,8 +80,40 @@ def main():
     app.mainloop()
 
 
+def _data_has_content() -> bool:
+    """Return ``True`` if critical data directories are non-empty.
+
+    Checks for at least one face image, one voice ``.wav``, and one
+    journal ``.md``.  Ignores hidden files (``.gitignore``, ``.gitkeep``)
+    so an empty repo clone is correctly detected as needing setup.
+    """
+    from src.utils.paths import PATHS
+    has_face = any(
+        p.suffix.lower() in (".jpg", ".jpeg", ".png")
+        for p in PATHS["face_img"].parent.iterdir()
+    )
+    has_voice = any(p.suffix == ".wav" for p in PATHS["voices_dir"].iterdir())
+    has_journal = any(p.suffix == ".md" for p in PATHS["journal"].iterdir())
+    return has_face and has_voice and has_journal
+
+
 def _reveal(app):
-    """Hand-off from splash to main UI without destroying the window."""
+    """Hand-off from splash to main UI.
+
+    When no critical data files exist yet (first run after a fresh
+    clone) the settings / configuration dialog is shown first so the
+    user can upload a face, a voice sample, and journal files before
+    the main window appears.
+    """
+    if not _data_has_content():
+        from src.ui.settings import configuration
+        configuration(on_complete_callback=lambda: _finish_reveal(app))
+    else:
+        _finish_reveal(app)
+
+
+def _finish_reveal(app):
+    """Reveal the main window and mark the system as ready."""
     app.after(0, app._refresh_languages)
     app._update_status("System Ready", C_OK)
     app.deiconify()
